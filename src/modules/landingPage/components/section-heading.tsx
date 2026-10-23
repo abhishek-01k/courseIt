@@ -1,18 +1,21 @@
+import { Reveal } from "@/components/motion/reveal";
+import Pill from "./pill";
+
 type SectionHeadingProps = {
+  id: string;
   label: string;
-  before: string;
+  title: string;
   accent: string;
-  after?: string;
 };
 
-export default function SectionHeading({ label, before, accent, after = "" }: SectionHeadingProps) {
+// Pill + h2 ending in the italic moss phrase (once per section).
+export default function SectionHeading({ id, label, title, accent }: SectionHeadingProps) {
   return (
-    <div className="max-w-3xl">
-      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{label}</span>
-      <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-tighter text-balance sm:text-5xl">
-        {before} <em className="font-serif font-normal italic text-primary">{accent}</em>
-        {after}
+    <Reveal className="flex flex-col items-center gap-[18px] text-center">
+      <Pill>{label}</Pill>
+      <h2 id={id} className="text-h2">
+        {title} <em className="italic text-moss">{accent}</em>
       </h2>
-    </div>
+    </Reveal>
   );
 }

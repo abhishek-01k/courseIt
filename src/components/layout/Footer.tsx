@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NAV_LINKS } from "@/lib/constants";
+import { LEGAL_LINKS, NAV_LINKS } from "@/lib/constants";
 import { LogoMark } from "./Logo";
 
 // Lime band with ink text in both themes (logo rules: ink on lime).
@@ -12,8 +12,8 @@ export default function Footer() {
             <LogoMark className="h-[45px] w-[58px]" />
           </Link>
           <nav aria-label="Footer" className="flex flex-wrap gap-6 text-[0.95rem]">
-            {NAV_LINKS.map((link) => (
-              <Link key={link.id} href={link.href} className="hover:underline">
+            {[...NAV_LINKS, ...LEGAL_LINKS].map((link) => (
+              <Link key={link.href} href={link.href} className="hover:underline">
                 {link.title}
               </Link>
             ))}

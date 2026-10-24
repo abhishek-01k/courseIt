@@ -1,5 +1,5 @@
 import { Reveal } from "@/components/motion/reveal";
-import Pill from "./pill";
+import Pill from "@/components/pill";
 
 type SectionHeadingProps = {
   id: string;

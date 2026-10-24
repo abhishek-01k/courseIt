@@ -1,7 +1,7 @@
 import Landscape from "@/components/landscape";
 import { Reveal } from "@/components/motion/reveal";
 import CtaButtons from "./cta-buttons";
-import Pill from "./pill";
+import Pill from "@/components/pill";
 
 export default function CallToAction() {
   return (

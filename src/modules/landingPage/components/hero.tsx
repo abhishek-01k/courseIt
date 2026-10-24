@@ -2,7 +2,7 @@ import Landscape from "@/components/landscape";
 import Parallax from "@/components/motion/parallax";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 import CtaButtons from "./cta-buttons";
-import Pill from "./pill";
+import Pill from "@/components/pill";
 
 export default function Hero() {
   return (

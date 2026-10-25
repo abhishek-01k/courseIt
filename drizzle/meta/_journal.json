@@ -71,6 +71,20 @@
       "when": 1792907350163,
       "tag": "0009_slow_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792924820734,
+      "tag": "0010_bright_blackheart",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792926132806,
+      "tag": "0011_curvy_darkstar",
+      "breakpoints": true
     }
   ]
 }

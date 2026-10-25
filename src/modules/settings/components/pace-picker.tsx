@@ -3,16 +3,16 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { setPaceAction } from "../actions";
+import { setDailyMinutesAction } from "../actions";
 
 const PRESETS = [30, 60, 90, 120];
 
-// Minutes a day. Changing it re-packs the days at once; nothing is regenerated.
-export default function PacePicker({ courseId, minutesPerDay, dayCount }: { courseId: string; minutesPerDay: number; dayCount: number }) {
+// Daily learning time, for all courses. Changing it re-packs every course's days at once; nothing is regenerated.
+export default function PacePicker({ minutesPerDay }: { minutesPerDay: number }) {
   const [custom, setCustom] = useState(!PRESETS.includes(minutesPerDay));
   const [value, setValue] = useState(String(minutesPerDay));
   const [pending, start] = useTransition();
-  const choose = (minutes: number) => start(() => setPaceAction(courseId, minutes));
+  const choose = (minutes: number) => start(() => setDailyMinutesAction(minutes));
 
   const chip = (active: boolean) =>
     cn(
@@ -24,9 +24,7 @@ export default function PacePicker({ courseId, minutesPerDay, dayCount }: { cour
     <div className="flex flex-col gap-3 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)]" aria-busy={pending}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-medium">How much time do you have each day?</p>
-        <span className="text-[0.9rem] text-ink-soft tabular-nums">
-          {minutesPerDay} min a day · {dayCount} {dayCount === 1 ? "day" : "days"}
-        </span>
+        <span className="text-[0.9rem] text-ink-soft tabular-nums">{minutesPerDay} min a day</span>
       </div>
       <div role="radiogroup" aria-label="Minutes a day" className="flex flex-wrap gap-2">
         <button type="button" role="radio" aria-checked={custom} onClick={() => setCustom(true)} className={chip(custom)}>

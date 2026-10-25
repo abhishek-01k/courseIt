@@ -64,7 +64,7 @@ export default function AppSidebar() {
           <Logo />
         </div>
 
-        <Link href="/dashboard#course-url" className={cn(buttonVariants({ size: "lg" }), "w-full")}>
+        <Link href="/new" className={cn(buttonVariants({ size: "lg" }), "w-full")}>
           <Plus aria-hidden="true" className="size-4" />
           New course
         </Link>

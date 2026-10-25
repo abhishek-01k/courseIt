@@ -12,6 +12,7 @@ export const users = pgTable("user", {
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   timezone: text("timezone"), // the learner's IANA zone, so "today" and streaks follow their clock
+  minutesPerDay: integer("minutes_per_day").notNull().default(30), // daily learning time (Settings); every course's days are packed from it
 });
 
 export const accounts = pgTable(
@@ -136,6 +137,23 @@ export const questions = pgTable(
   (t) => [index("question_lesson_idx").on(t.lessonId, t.position)],
 );
 
+// The placement test: 10 questions written once per course by Nemotron 3 Ultra from the transcript.
+// Each covers 1-3 lessons; answering it right lets a learner skip them.
+export const placementQuestions = pgTable(
+  "placement_question",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    courseId: text("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    prompt: text("prompt").notNull(),
+    options: jsonb("options").$type<string[]>().notNull(),
+    answerIndex: integer("answer_index").notNull(),
+    explanation: text("explanation").notNull(),
+    lessonIds: jsonb("lesson_ids").$type<string[]>().notNull(), // the lessons this question covers
+  },
+  (t) => [index("placement_question_course_idx").on(t.courseId, t.position)],
+);
+
 // Live log of a course build, shown to the learner as "what's happening now" plus every step so far.
 export const stepStatus = pgEnum("step_status", ["running", "done", "failed"]);
 
@@ -224,12 +242,36 @@ export const lessonNotes = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.lessonId] }), index("lesson_note_user_idx").on(t.userId, t.updatedAt)],
 );
 
+// A learner's placement test answers (questionId -> option, -1 = "I don't know this yet"). Retakes replace it.
+export const placementResults = pgTable(
+  "placement_result",
+  {
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    courseId: text("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+    answers: jsonb("answers").$type<Record<string, number>>().notNull(),
+    score: integer("score").notNull(),
+    total: integer("total").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.courseId] })],
+);
+
+// Lessons a learner skips because they already know them. Taken out of their day plan; still openable.
+export const lessonSkips = pgTable(
+  "lesson_skip",
+  {
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    lessonId: text("lesson_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
+    courseId: text("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.lessonId] }), index("lesson_skip_user_course_idx").on(t.userId, t.courseId)],
+);
+
 export const enrollments = pgTable(
   "enrollment",
   {
     userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     courseId: text("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
-    minutesPerDay: integer("minutes_per_day").notNull().default(30), // the learner's pace; days are packed from it
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     lastOpenedAt: timestamp("last_opened_at", { mode: "date" }).notNull().defaultNow(),
   },

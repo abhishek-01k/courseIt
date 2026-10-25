@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { attempts, courses, courseSteps, courseVideos, enrollments, lessonNotes, lessonProgress, lessons, lessonWatch, questions, users, videos } from "@/db/schema";
+import { attempts, courses, courseSteps, courseVideos, enrollments, lessonNotes, lessonProgress, lessons, lessonSkips, lessonWatch, questions, users, videos } from "@/db/schema";
 import { packDays } from "@/lib/pace";
 
 export async function getCourseBySlug(slug: string) {
@@ -77,7 +77,7 @@ export async function getCompletedLessonIds(userId: string, courseId: string) {
  * whether they've watched it (80%) and done its quiz. "today" is the first day with something left.
  */
 export async function getCoursePlan(userId: string, courseId: string) {
-  const [rows, [enrollment], watched, quizzed] = await Promise.all([
+  const [rows, [user], watched, quizzed, skips] = await Promise.all([
     db
       .select({
         id: lessons.id,
@@ -94,22 +94,31 @@ export async function getCoursePlan(userId: string, courseId: string) {
       .innerJoin(videos, eq(videos.id, lessons.videoId))
       .where(eq(lessons.courseId, courseId))
       .orderBy(asc(lessons.position)),
-    db.select({ minutesPerDay: enrollments.minutesPerDay }).from(enrollments).where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))),
+    db.select({ minutesPerDay: users.minutesPerDay }).from(users).where(eq(users.id, userId)),
     db.select({ lessonId: lessonWatch.lessonId, watchedAt: lessonWatch.watchedAt, watchedSeconds: lessonWatch.watchedSeconds }).from(lessonWatch).where(and(eq(lessonWatch.userId, userId), eq(lessonWatch.courseId, courseId))),
     getCompletedLessonIds(userId, courseId),
+    db.select({ lessonId: lessonSkips.lessonId }).from(lessonSkips).where(and(eq(lessonSkips.userId, userId), eq(lessonSkips.courseId, courseId))),
   ]);
 
-  const minutesPerDay = enrollment?.minutesPerDay ?? 30;
+  const minutesPerDay = user?.minutesPerDay ?? 30; // a user setting (Settings), the same for every course
   const watch = new Map(watched.map((w) => [w.lessonId, w]));
-  const days = packDays(rows.map((l) => l.endSeconds - l.startSeconds), minutesPerDay);
+  const skipped = new Set(skips.map((s) => s.lessonId));
+  // Days are packed from the lessons the learner will actually watch; a skipped lesson sits in the day of
+  // the next lesson they will watch (or the last day), shown greyed out.
+  const kept = rows.filter((l) => !skipped.has(l.id));
+  const keptDays = packDays(kept.map((l) => l.endSeconds - l.startSeconds), minutesPerDay);
+  const dayOf = new Map(kept.map((l, i) => [l.id, keptDays[i]]));
+  const lastDay = keptDays.at(-1) ?? 1;
   const plan = rows.map((l, i) => {
     const w = watch.get(l.id);
     const isWatched = Boolean(w?.watchedAt);
     const quizDone = quizzed.has(l.id);
-    return { ...l, day: days[i], watched: isWatched, watchedSeconds: w?.watchedSeconds ?? 0, quizDone, done: isWatched || quizDone };
+    const isSkipped = skipped.has(l.id);
+    const day = dayOf.get(l.id) ?? dayOf.get(rows.slice(i + 1).find((n) => dayOf.has(n.id))?.id ?? "") ?? lastDay;
+    return { ...l, day, skipped: isSkipped, watched: isWatched, watchedSeconds: w?.watchedSeconds ?? 0, quizDone, done: isWatched || quizDone };
   });
-  const today = plan.find((l) => !l.done)?.day ?? null;
-  return { minutesPerDay, lessons: plan, dayCount: days.at(-1) ?? 0, today };
+  const today = plan.find((l) => !l.done && !l.skipped)?.day ?? null;
+  return { minutesPerDay, lessons: plan, dayCount: keptDays.length ? lastDay : 0, today };
 }
 
 export type CoursePlan = Awaited<ReturnType<typeof getCoursePlan>>;
@@ -117,4 +126,14 @@ export type CoursePlan = Awaited<ReturnType<typeof getCoursePlan>>;
 export async function getMyNote(userId: string, lessonId: string) {
   const [note] = await db.select({ body: lessonNotes.body }).from(lessonNotes).where(and(eq(lessonNotes.userId, userId), eq(lessonNotes.lessonId, lessonId)));
   return note?.body ?? "";
+}
+
+/** How many creator chapters the course's videos have (shown on the onboarding screen). */
+export async function getChapterCount(courseId: string) {
+  const rows = await db
+    .select({ chapters: videos.chapters })
+    .from(courseVideos)
+    .innerJoin(videos, eq(videos.id, courseVideos.videoId))
+    .where(eq(courseVideos.courseId, courseId));
+  return rows.reduce((total, r) => total + r.chapters.length, 0);
 }

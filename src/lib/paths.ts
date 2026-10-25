@@ -18,3 +18,5 @@ export function newSlug(title: string) {
 export const coursePath = (slug: string) => `/courses/${slug}`;
 /** Lessons are addressed by number (1-based). Safe because a course's lessons are never reordered. */
 export const lessonPath = (slug: string, position: number) => `/courses/${slug}/${position + 1}`;
+/** The full-screen onboarding shown while a course builds. */
+export const buildPath = (slug: string) => `/build/${slug}`;

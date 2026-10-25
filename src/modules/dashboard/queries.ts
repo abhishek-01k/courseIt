@@ -1,6 +1,6 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { courses, enrollments, userDays, users } from "@/db/schema";
+import { attempts, courses, enrollments, lessonProgress, lessonWatch, userDays, users } from "@/db/schema";
 import { getCoursePlan } from "@/modules/course/queries";
 
 const dayKey = (date: Date, zone: string) => new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(date);
@@ -40,6 +40,56 @@ export async function getContinue(userId: string) {
   if (!recent) return null;
 
   const plan = await getCoursePlan(userId, recent.id);
-  const next = plan.lessons.find((l) => !l.done) ?? null;
+  const next = plan.lessons.find((l) => !l.done && !l.skipped) ?? null;
   return { course: recent, next, total: plan.lessons.length, finished: plan.lessons.filter((l) => l.done).length, dayCount: plan.dayCount };
+}
+
+const WEEK = 7 * 24 * 3600 * 1000;
+
+/** The four tickets on a returning learner's Today: streak, lessons finished, quiz score, time watched (last 7 days). */
+export async function getWeekStats(userId: string) {
+  const since = new Date(Date.now() - WEEK);
+  const [streak, [watched], [quizzed], [answers], [seconds]] = await Promise.all([
+    getStreak(userId),
+    db.select({ ids: sql<string[]>`coalesce(array_agg(${lessonWatch.lessonId}), '{}')` }).from(lessonWatch).where(and(eq(lessonWatch.userId, userId), gte(lessonWatch.watchedAt, since))),
+    db.select({ ids: sql<string[]>`coalesce(array_agg(${lessonProgress.lessonId}), '{}')` }).from(lessonProgress).where(and(eq(lessonProgress.userId, userId), gte(lessonProgress.completedAt, since))),
+    db
+      .select({ total: sql<number>`count(*)::int`, right: sql<number>`count(*) filter (where ${attempts.correct})::int` })
+      .from(attempts)
+      .where(and(eq(attempts.userId, userId), gte(attempts.createdAt, since))),
+    db
+      .select({ total: sql<number>`coalesce(sum(cardinality(${lessonWatch.seconds})), 0)::int` })
+      .from(lessonWatch)
+      .where(and(eq(lessonWatch.userId, userId), gte(lessonWatch.updatedAt, since))),
+  ]);
+  return {
+    streak,
+    lessons: new Set([...watched.ids, ...quizzed.ids]).size,
+    quizScore: answers.total ? Math.round((answers.right / answers.total) * 100) : null,
+    watchedSeconds: seconds.total,
+  };
+}
+
+/** Up to six courses the learner is taking, most recent first, each with its day plan. */
+export async function getMyCourses(userId: string) {
+  const list = await db
+    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status })
+    .from(enrollments)
+    .innerJoin(courses, eq(courses.id, enrollments.courseId))
+    .where(eq(enrollments.userId, userId))
+    .orderBy(desc(enrollments.lastOpenedAt))
+    .limit(6);
+  return Promise.all(list.map(async (course) => ({ course, plan: await getCoursePlan(userId, course.id) })));
+}
+
+/** "Good morning/afternoon/evening" and today's date, in the learner's own timezone. */
+export async function getGreeting(userId: string) {
+  const [user] = await db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId));
+  const zone = user?.timezone ?? "UTC";
+  const now = new Date();
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "numeric", hourCycle: "h23" }).format(now));
+  return {
+    hello: hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening",
+    date: new Intl.DateTimeFormat("en-US", { timeZone: zone, weekday: "long", month: "short", day: "numeric" }).format(now),
+  };
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { buttonVariants } from "@/components/ui/button";
 import { NAV_LINKS } from "@/lib/constants";
+import AuthCta from "./AuthCta";
 import Logo from "./Logo";
 
 export default function Navbar() {
@@ -20,9 +20,7 @@ export default function Navbar() {
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 md:ml-3">
           <ThemeToggle />
-          <Link href="/login" className={buttonVariants({ size: "lg" })}>
-            Start learning
-          </Link>
+          <AuthCta signedIn="Dashboard" signedOut="Start learning" />
         </div>
       </div>
     </header>

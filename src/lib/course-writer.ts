@@ -173,3 +173,68 @@ Rules:
   if (notes.length < 200 || questions.length < 3) throw new Error(`Lesson "${lesson.title}" came back incomplete`);
   return { model, notes, questions };
 }
+
+export type PlacementQuestion = { prompt: string; options: string[]; answerIndex: number; explanation: string; lessonIds: string[] };
+
+type LessonForTest = { id: string; position: number; title: string; startSeconds: number; endSeconds: number; videoId: string };
+
+const shuffled = (options: string[], answerIndex: number) => {
+  const order = options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return { options: order.map((i) => options[i]), answerIndex: order.indexOf(answerIndex) };
+};
+
+/**
+ * The placement test: 10 questions from the transcript, split by lesson, so a learner can prove what they
+ * already know. Written once per course by Nemotron 3 Ultra right after planning (the lesson notes don't
+ * exist yet, the transcript does). Lesson 1 (the intro) is never tested, so it's never skipped.
+ */
+export async function writePlacementTest(courseTitle: string, lessons: LessonForTest[], notesByVideo: Map<string, string>): Promise<PlacementQuestion[]> {
+  const testable = lessons.filter((l) => l.position > 0);
+  if (!testable.length) return [];
+  // Keep the prompt bounded on very long courses: each lesson gets an equal share of ~300k characters.
+  const share = Math.max(1500, Math.floor(300_000 / testable.length));
+  const sections = testable
+    .map((l) => {
+      const lines = (notesByVideo.get(l.videoId) ?? "").split("\n").filter((line) => {
+        const t = lineSeconds(line);
+        return t !== null && t >= l.startSeconds && t < l.endSeconds;
+      });
+      return `=== L${l.position + 1} "${l.title}"\n${lines.join("\n").slice(0, share)}`;
+    })
+    .join("\n\n");
+
+  const { json: raw } = await nemotronJson(
+    "ultra",
+    `You write a placement test for an online course built from a video lecture. Its job: find out which lessons a learner ALREADY understands, so they can skip them. Reply with JSON only:
+{"questions":[{"prompt":string,"options":[string,string,string,string],"answerIndex":integer,"explanation":string,"lessons":[integer]}]}
+Rules:
+- Exactly 10 questions, spread across the course from early to late lessons.
+- Each question tests understanding of an idea as the course teaches it, answerable by someone who knows the subject WITHOUT having watched this video. Never ask about the video itself (examples used, what the speaker said, timestamps).
+- "lessons": the 1-3 lesson numbers (the L numbers below) the question proves the learner knows.
+- Exactly one correct option; wrong options must be plausible to someone who doesn't know it.
+- explanation: one sentence on why the answer is right.`,
+    `Course: "${courseTitle}"\n\n${sections}`,
+    { think: false, maxTokens: 12000 },
+  );
+
+  const byNumber = new Map(testable.map((l) => [l.position + 1, l.id]));
+  const items = Array.isArray((raw as { questions?: unknown }).questions) ? (raw as { questions: unknown[] }).questions : [];
+  const questions = items
+    .map((q) => {
+      const x = (q ?? {}) as Record<string, unknown>;
+      const options = Array.isArray(x.options) ? x.options.map(str) : [];
+      const answerIndex = int(x.answerIndex);
+      const lessonIds = [...new Set((Array.isArray(x.lessons) ? x.lessons : []).map((n) => byNumber.get(int(n))).filter((id): id is string => Boolean(id)))].slice(0, 3);
+      if (!str(x.prompt) || options.length !== 4 || options.some((o) => !o) || !(answerIndex >= 0 && answerIndex < 4) || !lessonIds.length) return null;
+      return { prompt: str(x.prompt), ...shuffled(options, answerIndex), explanation: str(x.explanation), lessonIds };
+    })
+    .filter((q) => q !== null)
+    .slice(0, 10);
+
+  if (questions.length < 6) throw new Error(`Placement test came back with only ${questions.length} usable questions`);
+  return questions;
+}

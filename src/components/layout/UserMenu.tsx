@@ -2,6 +2,7 @@
 
 import { ChevronDown, Crown, LogOut, Settings } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -45,11 +46,11 @@ export default function UserMenu({ name, image, plan }: UserMenuProps) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent side="top" sideOffset={8} className="rounded-[18px] bg-surface p-1.5 shadow-[0_0_0_1px_var(--line),0_24px_48px_-20px_rgba(22,49,92,0.4)] ring-0">
-        {/* ponytail: Settings and Pricing pages don't exist yet; enable when they ship. */}
-        <DropdownMenuItem disabled className={item}>
+        <DropdownMenuItem render={<Link href="/settings" />} className={item}>
           <Settings className="size-[18px]" />
           Settings
         </DropdownMenuItem>
+        {/* ponytail: no Pricing page yet; enable when it ships. */}
         <DropdownMenuItem disabled className={item}>
           <Crown className="size-[18px]" />
           Pricing

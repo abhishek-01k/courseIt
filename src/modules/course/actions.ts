@@ -1,14 +1,13 @@
 "use server";
 
 import { and, count, eq, gte } from "drizzle-orm";
-import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { courses, courseVideos, enrollments, lessons, videos } from "@/db/schema";
+import { courses, courseVideos, enrollments, videos } from "@/db/schema";
 import { BUILD_COURSE, inngest } from "@/inngest/client";
 import { auth } from "@/lib/auth";
 import { COURSE_LIMITS } from "@/lib/constants";
-import { coursePath, newSlug } from "@/lib/paths";
+import { buildPath, coursePath, newSlug } from "@/lib/paths";
 import { fetchCourseSource, parseYouTubeUrl, YouTubeError } from "@/lib/youtube";
 import type { BuildCourseState } from "@/types/course";
 
@@ -35,7 +34,8 @@ export async function buildCourseAction(_prev: BuildCourseState, formData: FormD
       // Resume, never start over: lessons carry every learner's answers, watch time and notes.
       await inngest.send({ name: BUILD_COURSE, data: { courseId: existing.id, resume: true } });
     }
-    redirect(coursePath(existing.slug));
+    // Already built: open it. Still building (or just restarted): join the onboarding screen.
+    redirect(existing.status === "ready" ? coursePath(existing.slug) : buildPath(existing.slug));
   }
 
   const since = new Date(Date.now() - 24 * 3600 * 1000);
@@ -89,7 +89,7 @@ export async function buildCourseAction(_prev: BuildCourseState, formData: FormD
     const [raced] = await db.select({ id: courses.id, slug: courses.slug }).from(courses).where(eq(courses.sourceId, source.id));
     if (!raced) throw error;
     await enroll(userId, raced.id);
-    redirect(coursePath(raced.slug));
+    redirect(buildPath(raced.slug));
   }
 
   try {
@@ -98,7 +98,7 @@ export async function buildCourseAction(_prev: BuildCourseState, formData: FormD
     console.error(error);
     await db.update(courses).set({ status: "failed", error: "Couldn't start the build." }).where(eq(courses.id, courseId));
   }
-  redirect(coursePath(slug));
+  redirect(buildPath(slug));
 }
 
 /** Retry a failed or partly built course: keeps the plan and finished lessons, writes only what's missing. */
@@ -116,21 +116,5 @@ export async function retryCourseAction(courseId: string) {
 
   await db.update(courses).set({ status: "queued", error: null }).where(eq(courses.id, courseId));
   await inngest.send({ name: BUILD_COURSE, data: { courseId, resume: true } });
-  redirect(coursePath(row.slug));
-}
-
-/** The learner's pace in minutes a day. Days are re-packed from it; the page refreshes to show them. */
-export async function setPaceAction(courseId: string, minutesPerDay: number) {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) redirect("/login");
-  if (!Number.isFinite(minutesPerDay)) return;
-  const minutes = Math.round(Math.min(Math.max(minutesPerDay, 5), 480));
-  const [lesson] = await db.select({ id: lessons.id }).from(lessons).where(eq(lessons.courseId, courseId)).limit(1);
-  if (!lesson) return;
-  await db
-    .insert(enrollments)
-    .values({ userId, courseId, minutesPerDay: minutes })
-    .onConflictDoUpdate({ target: [enrollments.userId, enrollments.courseId], set: { minutesPerDay: minutes } });
-  refresh();
+  redirect(buildPath(row.slug));
 }

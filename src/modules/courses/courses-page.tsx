@@ -17,7 +17,7 @@ async function CourseList() {
   if (!courses.length) {
     return (
       <EmptyState icon={BookOpen} title="No courses yet" text="Paste a YouTube video or playlist and it becomes a course with lessons, quizzes and a daily plan.">
-        <Link href="/dashboard#course-url" className={buttonVariants({ size: "lg" })}>
+        <Link href="/new" className={buttonVariants({ size: "lg" })}>
           Build your first course
         </Link>
       </EmptyState>

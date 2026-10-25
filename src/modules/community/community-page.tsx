@@ -13,7 +13,7 @@ async function CommunityCourses() {
   if (!courses.length) {
     return (
       <EmptyState icon={Users} title="No courses yet" text="Every course anyone builds shows up here, credited to its YouTube creator. Be the first.">
-        <Link href="/dashboard#course-url" className={buttonVariants({ size: "lg" })}>
+        <Link href="/new" className={buttonVariants({ size: "lg" })}>
           Build a course
         </Link>
       </EmptyState>

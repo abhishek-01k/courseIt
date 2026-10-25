@@ -1,11 +1,11 @@
 import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { db } from "@/db";
-import { courses, courseSteps, courseVideos, lessons, questions, videos, videoSegments } from "@/db/schema";
+import { courses, courseSteps, courseVideos, lessons, placementQuestions, questions, videos, videoSegments } from "@/db/schema";
 import { readVideoSegment } from "@/lib/ai";
 import { AI } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils";
-import { planLessons, writeLesson } from "@/lib/course-writer";
+import { planLessons, writeLesson, writePlacementTest } from "@/lib/course-writer";
 import { fetchTranscript } from "@/lib/transcript";
 import { BUILD_COURSE, inngest } from "./client";
 
@@ -195,10 +195,40 @@ export const buildCourse = inngest.createFunction(
         ),
       );
 
+    // The placement test is written alongside the lessons (from the transcript, not the notes), so it's
+    // ready seconds after the plan. If it fails, the course still works; the test just isn't offered.
+    const placement = step
+      .run("write placement test", () =>
+        track(
+          courseId,
+          "placement",
+          "Writing your placement test with Nemotron 3 Ultra",
+          async () => {
+            const [{ existing }] = await db.select({ existing: count() }).from(placementQuestions).where(eq(placementQuestions.courseId, courseId));
+            if (existing) return existing;
+            const [course] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId));
+            const list = await db
+              .select({ id: lessons.id, position: lessons.position, title: lessons.title, startSeconds: lessons.startSeconds, endSeconds: lessons.endSeconds, videoId: lessons.videoId })
+              .from(lessons)
+              .where(eq(lessons.courseId, courseId))
+              .orderBy(asc(lessons.position));
+            const notes = new Map(await Promise.all([...new Set(list.map((l) => l.videoId))].map(async (id) => [id, await notesFor(id)] as const)));
+            const test = await writePlacementTest(course.title, list, notes);
+            if (test.length) await db.insert(placementQuestions).values(test.map((q, position) => ({ ...q, courseId, position })));
+            return test.length;
+          },
+          (n) => `${n} questions, each covering 1–3 lessons`,
+        ),
+      )
+      .catch(() => null);
+
     // Lesson 1 first so the learner can start while the rest are written in parallel.
     const [first, ...rest] = lessonIds;
-    await buildOrSkip(first);
-    await Promise.all(rest.map(buildOrSkip));
+    const writeLessons = async () => {
+      await buildOrSkip(first);
+      await Promise.all(rest.map(buildOrSkip));
+    };
+    await Promise.all([placement, writeLessons()]);
 
     await step.run("finish", async () => {
       const [{ notReady }] = await db.select({ notReady: count() }).from(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.ready, false)));

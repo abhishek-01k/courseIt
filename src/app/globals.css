@@ -144,7 +144,7 @@
   --chart-4: var(--lime);
   --chart-5: var(--rose);
   --radius: 0.75rem;
-  --sidebar: var(--paper);
+  --sidebar: #f6f7f1;
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--moss);
   --sidebar-primary-foreground: var(--on-moss);
@@ -157,6 +157,7 @@
 /* Dark mode is not in the brief; these are derived from it (lime becomes the accent on dark). */
 .dark {
   --paper: #0e1311;
+  --sidebar: #121815;
   --surface: #161d18;
   --ink: #f1f3ea;
   --ink-soft: #b3b7a3;

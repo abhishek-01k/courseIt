@@ -1,12 +1,16 @@
 import { Suspense } from "react";
-import Welcome from "./components/welcome";
+import ContinueLearning from "./components/continue-learning";
+import PopularCourses from "./components/popular-courses";
+import StartCourse from "./components/start-course";
 
 export default function DashboardPage() {
   return (
-    <section className="mx-auto w-full max-w-[1200px] px-6 pt-36 pb-24">
-      <Suspense fallback={<p className="text-ink-soft">Loading your dashboard…</p>}>
-        <Welcome />
+    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-10 px-4 pt-8 pb-20 sm:px-6">
+      <Suspense>
+        <ContinueLearning />
       </Suspense>
-    </section>
+      <StartCourse />
+      <PopularCourses />
+    </div>
   );
 }

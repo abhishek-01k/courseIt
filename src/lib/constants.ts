@@ -1,3 +1,5 @@
+import { BookOpen, Home, NotebookPen, Users } from "lucide-react";
+import type { AppNavLink } from "@/types/app-sidebar";
 import type { LessonFormat } from "@/types/format-toggle";
 import type { HowStep } from "@/types/how-it-works";
 import type { LandscapePalette, LandscapeScene } from "@/types/landscape";
@@ -49,6 +51,15 @@ export const NAV_LINKS: NavLink[] = [
   { id: 3, title: "How it works", href: "/#how-it-works" },
   { id: 4, title: "Stories", href: "/#stories" },
 ];
+
+// Signed-in sidebar. Each href also needs a matcher entry in src/proxy.ts.
+export const APP_NAV_LINKS: AppNavLink[] = [
+  { id: 1, title: "Today", href: "/dashboard", icon: Home },
+  { id: 2, title: "My courses", href: "/courses", icon: BookOpen },
+  { id: 3, title: "Notes", href: "/notes", icon: NotebookPen },
+];
+
+export const APP_EXPLORE_LINKS: AppNavLink[] = [{ id: 1, title: "Community", href: "/community", icon: Users }];
 
 export const LANDSCAPE_PALETTES: Record<LandscapeScene, LandscapePalette> = {
   sunrise: {
@@ -186,3 +197,32 @@ export const TESTIMONIALS: Testimonial[] = [
     finished: "Finished: System design basics · 6 days",
   },
 ];
+
+// Protect the AI bill while keeping CourseIt free. Courses someone already built never count.
+export const COURSE_LIMITS = {
+  newCoursesPerDay: 3,
+  maxPlaylistVideos: 200,
+  maxTotalSeconds: 12 * 3600,
+};
+
+// AI models. Captions come from Supadata; Gemini only watches videos that have none. Every decision and
+// every word a learner reads comes from NVIDIA Nemotron on Nebius Token Factory.
+export const AI = {
+  readerModel: "gemini-3.8-flash",
+  nemotron: {
+    ultra: "nvidia/Nemotron-3-Ultra-550b-a55b", // serious reasoning: planning a course out of hours of video
+    super: "nvidia/nemotron-3-super-120b-a12b", // lesson notes and quizzes, many in parallel
+    nano: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", // instant calls: feedback on a wrong answer, hints, tags
+    lightning: "nvidia/Nemotron-3_5-Lightning", // backup when another model is overloaded
+  },
+  // If a model stays overloaded, the same request moves down its list.
+  fallbacks: {
+    ultra: ["super", "lightning"],
+    super: ["lightning", "nano"],
+    nano: ["lightning"],
+    lightning: ["nano"],
+  } as Record<string, ("ultra" | "super" | "nano" | "lightning")[]>,
+  modelNames: { ultra: "Nemotron 3 Ultra", super: "Nemotron 3 Super", nano: "Nemotron 3 Nano", lightning: "Nemotron 3.5 Lightning" },
+  segmentSeconds: 10 * 60, // Gemini reads ~5 min of video per minute, so read 10-minute pieces in parallel
+  readerFps: 0.25, // one frame every 4s: lectures change slowly, and audio carries most of it
+};

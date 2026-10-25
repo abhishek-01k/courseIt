@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792856579504,
+      "tag": "0000_tranquil_edwin_jarvis",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792862593366,
+      "tag": "0001_public_thunderbolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792867126926,
+      "tag": "0002_nebulous_chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792868181902,
+      "tag": "0003_clean_azazel",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792874604046,
+      "tag": "0004_loose_vengeance",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792905624199,
+      "tag": "0005_violet_marrow",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792905943365,
+      "tag": "0006_friendly_darkhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792906586841,
+      "tag": "0007_lazy_krista_starr",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792907270344,
+      "tag": "0008_awesome_sasquatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792907350163,
+      "tag": "0009_slow_silver_samurai",
+      "breakpoints": true
+    }
+  ]
+}

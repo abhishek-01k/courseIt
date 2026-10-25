@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Familjen_Grotesk, Instrument_Sans, JetBrains_Mono } from "next/font/google";
-import SmoothScroll from "@/components/smooth-scroll";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -38,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <SmoothScroll>{children}</SmoothScroll>
+          {children}
         </ThemeProvider>
       </body>
     </html>

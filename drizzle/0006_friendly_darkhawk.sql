@@ -1,0 +1,1 @@
+ALTER TABLE "lesson_watch" ADD COLUMN "seconds" integer[] DEFAULT '{}' NOT NULL;

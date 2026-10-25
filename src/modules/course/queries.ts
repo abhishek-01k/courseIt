@@ -1,0 +1,120 @@
+import { and, asc, count, desc, eq, ne } from "drizzle-orm";
+import { db } from "@/db";
+import { attempts, courses, courseSteps, courseVideos, enrollments, lessonNotes, lessonProgress, lessons, lessonWatch, questions, users, videos } from "@/db/schema";
+import { packDays } from "@/lib/pace";
+
+export async function getCourseBySlug(slug: string) {
+  const [course] = await db.select().from(courses).where(eq(courses.slug, slug));
+  if (!course) return null;
+  const [{ videoCount }] = await db.select({ videoCount: count() }).from(courseVideos).where(eq(courseVideos.courseId, course.id));
+  return { ...course, slug, videoCount };
+}
+
+export function getEnrolledCourses(userId: string, limit?: number) {
+  const query = db
+    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds })
+    .from(enrollments)
+    .innerJoin(courses, eq(courses.id, enrollments.courseId))
+    .where(eq(enrollments.userId, userId))
+    .orderBy(desc(enrollments.lastOpenedAt));
+  return limit ? query.limit(limit) : query;
+}
+
+/** Opening a course enrolls you (e.g. from Community) and moves it to the top of Recents. */
+export async function touchEnrollment(userId: string, courseId: string) {
+  await db
+    .insert(enrollments)
+    .values({ userId, courseId })
+    .onConflictDoUpdate({ target: [enrollments.userId, enrollments.courseId], set: { lastOpenedAt: new Date() } });
+}
+
+// ponytail: newest 60, no paging/search yet; add both once Community has more courses than fit.
+export function getCommunityCourses() {
+  return db
+    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds, addedBy: users.name })
+    .from(courses)
+    .leftJoin(users, eq(users.id, courses.createdBy))
+    .where(ne(courses.status, "failed"))
+    .orderBy(desc(courses.createdAt))
+    .limit(60);
+}
+
+export function getCourseSteps(courseId: string) {
+  return db.select().from(courseSteps).where(eq(courseSteps.courseId, courseId)).orderBy(asc(courseSteps.startedAt));
+}
+
+/** Lesson `number` (1-based, as in the URL) of a course, with its quiz. */
+export async function getLesson(courseId: string, number: number) {
+  const [lesson] = await db
+    .select()
+    .from(lessons)
+    .where(and(eq(lessons.courseId, courseId), eq(lessons.position, number - 1)));
+  if (!lesson) return null;
+  const quiz = await db.select().from(questions).where(eq(questions.lessonId, lesson.id)).orderBy(asc(questions.position));
+  return { ...lesson, questions: quiz };
+}
+
+/** The learner's latest answer per question in a lesson, so a revisited quiz shows where they left off. */
+export async function getMyAnswers(userId: string, lessonId: string) {
+  const rows = await db
+    .selectDistinctOn([attempts.questionId], { questionId: attempts.questionId, chosenIndex: attempts.chosenIndex })
+    .from(attempts)
+    .where(and(eq(attempts.userId, userId), eq(attempts.lessonId, lessonId)))
+    .orderBy(attempts.questionId, desc(attempts.createdAt));
+  return Object.fromEntries(rows.map((r) => [r.questionId, r.chosenIndex]));
+}
+
+export async function getCompletedLessonIds(userId: string, courseId: string) {
+  const rows = await db
+    .select({ lessonId: lessonProgress.lessonId })
+    .from(lessonProgress)
+    .where(and(eq(lessonProgress.userId, userId), eq(lessonProgress.courseId, courseId)));
+  return new Set(rows.map((r) => r.lessonId));
+}
+
+/**
+ * The learner's day-by-day plan for a course: every lesson with its day (packed from their pace),
+ * whether they've watched it (80%) and done its quiz. "today" is the first day with something left.
+ */
+export async function getCoursePlan(userId: string, courseId: string) {
+  const [rows, [enrollment], watched, quizzed] = await Promise.all([
+    db
+      .select({
+        id: lessons.id,
+        position: lessons.position,
+        title: lessons.title,
+        summary: lessons.summary,
+        videoId: lessons.videoId,
+        startSeconds: lessons.startSeconds,
+        endSeconds: lessons.endSeconds,
+        ready: lessons.ready,
+        thumbnail: videos.thumbnail,
+      })
+      .from(lessons)
+      .innerJoin(videos, eq(videos.id, lessons.videoId))
+      .where(eq(lessons.courseId, courseId))
+      .orderBy(asc(lessons.position)),
+    db.select({ minutesPerDay: enrollments.minutesPerDay }).from(enrollments).where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId))),
+    db.select({ lessonId: lessonWatch.lessonId, watchedAt: lessonWatch.watchedAt, watchedSeconds: lessonWatch.watchedSeconds }).from(lessonWatch).where(and(eq(lessonWatch.userId, userId), eq(lessonWatch.courseId, courseId))),
+    getCompletedLessonIds(userId, courseId),
+  ]);
+
+  const minutesPerDay = enrollment?.minutesPerDay ?? 30;
+  const watch = new Map(watched.map((w) => [w.lessonId, w]));
+  const days = packDays(rows.map((l) => l.endSeconds - l.startSeconds), minutesPerDay);
+  const plan = rows.map((l, i) => {
+    const w = watch.get(l.id);
+    const isWatched = Boolean(w?.watchedAt);
+    const quizDone = quizzed.has(l.id);
+    return { ...l, day: days[i], watched: isWatched, watchedSeconds: w?.watchedSeconds ?? 0, quizDone, done: isWatched || quizDone };
+  });
+  const today = plan.find((l) => !l.done)?.day ?? null;
+  return { minutesPerDay, lessons: plan, dayCount: days.at(-1) ?? 0, today };
+}
+
+export type CoursePlan = Awaited<ReturnType<typeof getCoursePlan>>;
+
+export async function getMyNote(userId: string, lessonId: string) {
+  const [note] = await db.select({ body: lessonNotes.body }).from(lessonNotes).where(and(eq(lessonNotes.userId, userId), eq(lessonNotes.lessonId, lessonId)));
+  return note?.body ?? "";
+}

@@ -1,6 +1,6 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { attempts, courses, enrollments, lessonProgress, lessonWatch, userDays, users } from "@/db/schema";
+import { attempts, courses, enrollments, lessonNotes, lessonProgress, lessonWatch, roadmaps, userDays, users } from "@/db/schema";
 import { getCoursePlan } from "@/modules/course/queries";
 
 const dayKey = (date: Date, zone: string) => new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(date);
@@ -92,4 +92,14 @@ export async function getGreeting(userId: string) {
     hello: hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening",
     date: new Intl.DateTimeFormat("en-US", { timeZone: zone, weekday: "long", month: "short", day: "numeric" }).format(now),
   };
+}
+
+/** Numbers next to My courses, Roadmaps and Notes in the sidebar, keyed by their link. */
+export async function getSidebarCounts(userId: string) {
+  const [[courseCount], [roadmapCount], [noteCount]] = await Promise.all([
+    db.select({ n: count() }).from(enrollments).where(eq(enrollments.userId, userId)),
+    db.select({ n: count() }).from(roadmaps).where(eq(roadmaps.ownerId, userId)),
+    db.select({ n: count() }).from(lessonNotes).where(eq(lessonNotes.userId, userId)),
+  ]);
+  return { "/courses": courseCount.n, "/roadmaps": roadmapCount.n, "/notes": noteCount.n };
 }

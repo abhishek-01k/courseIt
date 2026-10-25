@@ -82,6 +82,8 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
   ]);
   after(() => touchEnrollment(userId, course.id));
 
+  console.log("course",course);
+
   const building = course.status !== "ready" && course.status !== "failed";
   const list = rows(steps, plan.lessons.length);
   const now = steps.find((s) => s.status === "running")?.label ?? (course.status === "ready" ? "Your course is ready" : "Starting…");
@@ -93,7 +95,6 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
     <div className="flex min-h-dvh flex-col bg-paper">
       {building && <RefreshWhileBuilding />}
 
-      {/* Full screen: no sidebar. Back goes home; the course keeps building in the background. */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
         <Link href="/dashboard" className={buttonVariants({ variant: "outline", size: "lg" })}>
           <ArrowLeft aria-hidden="true" />

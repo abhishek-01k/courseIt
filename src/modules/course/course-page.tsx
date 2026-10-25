@@ -6,11 +6,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import BuildStatus from "./components/build-status";
 import CourseHeader from "./components/course-header";
+import CourseMenu from "./components/course-menu";
 import LessonList from "./components/lesson-list";
 import RefreshWhileBuilding from "./components/refresh-while-building";
 import RetryBanner from "./components/retry-banner";
 import { getPlacementResult, getPlacementTest } from "@/modules/placement/queries";
-import { getCourseBySlug, getCoursePlan, getCourseSteps, touchEnrollment } from "./queries";
+import { getRoadmapsForCourse } from "@/modules/roadmap/queries";
+import { getCourseBySlug, getCoursePlan, getCourseSteps, isEnrolled, touchEnrollment } from "./queries";
 
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const [{ slug }, session] = await Promise.all([params, auth()]);
@@ -20,19 +22,28 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   if (!course) notFound();
   const id = course.id;
   const userId = session.user.id;
-  const [plan, steps, test, placement] = await Promise.all([getCoursePlan(userId, id), getCourseSteps(id), getPlacementTest(id), getPlacementResult(userId, id)]);
-  after(() => touchEnrollment(userId, id)); // runs after the response, so it never slows the page
+  const [plan, steps, test, placement, enrolled, roadmaps] = await Promise.all([
+    getCoursePlan(userId, id),
+    getCourseSteps(id),
+    getPlacementTest(id),
+    getPlacementResult(userId, id),
+    isEnrolled(userId, id),
+    getRoadmapsForCourse(userId, id),
+  ]);
+  // Opening a course doesn't enroll you (Enroll, a lesson or the placement test does); it only bumps Recents.
+  after(() => touchEnrollment(userId, id));
 
+  console.log("course",course);
   const building = course.status !== "ready" && course.status !== "failed";
 
   return (
-    <div className="mx-auto flex w-full max-w-[920px] flex-col gap-6 px-4 pt-8 pb-20 sm:px-6">
+    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 pt-8 pb-20 sm:px-6">
       {building && <RefreshWhileBuilding />}
       <Link href="/courses" className="inline-flex items-center gap-2 self-start text-[0.9rem] text-ink-soft hover:text-ink">
         <ArrowLeft aria-hidden="true" className="size-4" />
         All courses
       </Link>
-      <CourseHeader course={course} lessonCount={plan.lessons.length} />
+      <CourseHeader course={course} lessonCount={plan.lessons.length} menu={<CourseMenu courseId={id} courseTitle={course.title} enrolled={enrolled} roadmaps={roadmaps} />} />
 
       {building && <BuildStatus steps={steps} now={new Date()} />}
 

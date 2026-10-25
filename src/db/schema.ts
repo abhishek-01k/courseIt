@@ -12,7 +12,7 @@ export const users = pgTable("user", {
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   timezone: text("timezone"), // the learner's IANA zone, so "today" and streaks follow their clock
-  minutesPerDay: integer("minutes_per_day").notNull().default(30), // daily learning time (Settings); every course's days are packed from it
+  minutesPerDay: integer("minutes_per_day").notNull().default(90), // daily learning time (Settings); every course's days are packed from it
 });
 
 export const accounts = pgTable(
@@ -276,6 +276,46 @@ export const enrollments = pgTable(
     lastOpenedAt: timestamp("last_opened_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.courseId] })],
+);
+
+// A learner's own set of courses from different creators, in stages. Private until published to Community.
+export const roadmaps = pgTable(
+  "roadmap",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    slug: text("slug").notNull().unique(), // the URL: /roadmaps/<slug>
+    ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    published: boolean("published").notNull().default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("roadmap_owner_idx").on(t.ownerId, t.updatedAt), index("roadmap_published_idx").on(t.published, t.updatedAt)],
+);
+
+export const roadmapStages = pgTable(
+  "roadmap_stage",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    roadmapId: text("roadmap_id").notNull().references(() => roadmaps.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    name: text("name").notNull(),
+  },
+  (t) => [index("roadmap_stage_roadmap_idx").on(t.roadmapId, t.position)],
+);
+
+// A course sits in at most one stage of a roadmap.
+export const roadmapCourses = pgTable(
+  "roadmap_course",
+  {
+    roadmapId: text("roadmap_id").notNull().references(() => roadmaps.id, { onDelete: "cascade" }),
+    stageId: text("stage_id").notNull().references(() => roadmapStages.id, { onDelete: "cascade" }),
+    courseId: text("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    addedAt: timestamp("added_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.roadmapId, t.courseId] }), index("roadmap_course_stage_idx").on(t.stageId, t.position)],
 );
 
 export const coursesRelations = relations(courses, ({ many }) => ({ videos: many(courseVideos), lessons: many(lessons) }));

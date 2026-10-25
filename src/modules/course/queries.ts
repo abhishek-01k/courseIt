@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, ne, or } from "drizzle-orm";
 import { db } from "@/db";
 import { attempts, courses, courseSteps, courseVideos, enrollments, lessonNotes, lessonProgress, lessons, lessonSkips, lessonWatch, questions, users, videos } from "@/db/schema";
 import { packDays } from "@/lib/pace";
@@ -20,23 +20,40 @@ export function getEnrolledCourses(userId: string, limit?: number) {
   return limit ? query.limit(limit) : query;
 }
 
-/** Opening a course enrolls you (e.g. from Community) and moves it to the top of Recents. */
+/** Opening a course you take moves it to the top of Recents. Opening one you don't take changes nothing. */
 export async function touchEnrollment(userId: string, courseId: string) {
   await db
-    .insert(enrollments)
-    .values({ userId, courseId })
-    .onConflictDoUpdate({ target: [enrollments.userId, enrollments.courseId], set: { lastOpenedAt: new Date() } });
+    .update(enrollments)
+    .set({ lastOpenedAt: new Date() })
+    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)));
 }
 
-// ponytail: newest 60, no paging/search yet; add both once Community has more courses than fit.
-export function getCommunityCourses() {
+export async function isEnrolled(userId: string, courseId: string) {
+  const [row] = await db
+    .select({ userId: enrollments.userId })
+    .from(enrollments)
+    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)));
+  return Boolean(row);
+}
+
+// ponytail: top 60 by learners matching the search; paging when Community has more courses than fit.
+export function getCommunityCourses(q = "") {
+  const learners = count(enrollments.userId);
+  const match = q ? or(ilike(courses.title, `%${q}%`), ilike(courses.channel, `%${q}%`)) : undefined;
   return db
-    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds, addedBy: users.name })
+    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds, addedBy: users.name, learners })
     .from(courses)
     .leftJoin(users, eq(users.id, courses.createdBy))
-    .where(ne(courses.status, "failed"))
-    .orderBy(desc(courses.createdAt))
+    .leftJoin(enrollments, eq(enrollments.courseId, courses.id))
+    .where(and(ne(courses.status, "failed"), match))
+    .groupBy(courses.id, users.name)
+    .orderBy(desc(learners), desc(courses.createdAt))
     .limit(60);
+}
+
+export async function countCommunityCourses() {
+  const [{ n }] = await db.select({ n: count() }).from(courses).where(ne(courses.status, "failed"));
+  return n;
 }
 
 export function getCourseSteps(courseId: string) {
@@ -100,7 +117,7 @@ export async function getCoursePlan(userId: string, courseId: string) {
     db.select({ lessonId: lessonSkips.lessonId }).from(lessonSkips).where(and(eq(lessonSkips.userId, userId), eq(lessonSkips.courseId, courseId))),
   ]);
 
-  const minutesPerDay = user?.minutesPerDay ?? 30; // a user setting (Settings), the same for every course
+  const minutesPerDay = user?.minutesPerDay ?? 90; // a user setting (Settings), the same for every course
   const watch = new Map(watched.map((w) => [w.lessonId, w]));
   const skipped = new Set(skips.map((s) => s.lessonId));
   // Days are packed from the lessons the learner will actually watch; a skipped lesson sits in the day of

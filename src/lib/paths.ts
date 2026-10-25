@@ -20,3 +20,4 @@ export const coursePath = (slug: string) => `/courses/${slug}`;
 export const lessonPath = (slug: string, position: number) => `/courses/${slug}/${position + 1}`;
 /** The full-screen onboarding shown while a course builds. */
 export const buildPath = (slug: string) => `/build/${slug}`;
+export const roadmapPath = (slug: string) => `/roadmaps/${slug}`;

@@ -5,7 +5,7 @@ import type { getCourseBySlug } from "../queries";
 
 type Course = NonNullable<Awaited<ReturnType<typeof getCourseBySlug>>>;
 
-export default function CourseHeader({ course, lessonCount }: { course: Course; lessonCount: number }) {
+export default function CourseHeader({ course, lessonCount, menu }: { course: Course; lessonCount: number; menu?: React.ReactNode }) {
   const building = course.status !== "ready" && course.status !== "failed";
   return (
     <header className="flex flex-col gap-5">
@@ -21,6 +21,7 @@ export default function CourseHeader({ course, lessonCount }: { course: Course; 
             <em className="italic text-moss">{course.title}</em>
           </h1>
         </div>
+        {menu && <div className="self-start">{menu}</div>}
       </div>
       {building && (
         <div>

@@ -13,7 +13,7 @@ async function DailyTime() {
   const userId = session?.user?.id;
   if (!userId) redirect("/login");
   const [user] = await db.select({ minutesPerDay: users.minutesPerDay }).from(users).where(eq(users.id, userId));
-  return <PacePicker minutesPerDay={user?.minutesPerDay ?? 30} />;
+  return <PacePicker minutesPerDay={user?.minutesPerDay ?? 90} />;
 }
 
 export default function SettingsPage() {

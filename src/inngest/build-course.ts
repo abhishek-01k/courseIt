@@ -28,6 +28,10 @@ async function loadVideos(courseId: string) {
  */
 async function track<T>(courseId: string, key: string, label: string, work: () => Promise<T>, result?: (value: T) => string | null) {
   const row = { courseId, key, label, detail: null, status: "running" as const, startedAt: new Date(), finishedAt: null };
+  
+  console.log("[track] courseId:", courseId);
+  console.log("[track] row:", row);
+
   await db.insert(courseSteps).values(row).onConflictDoUpdate({ target: [courseSteps.courseId, courseSteps.key], set: row });
   const where = and(eq(courseSteps.courseId, courseId), eq(courseSteps.key, key));
   try {
@@ -62,8 +66,20 @@ export const buildCourse = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
+    
+    console.log("[buildCourse] Full event:", JSON.stringify(event, null, 2));
+    console.log("[buildCourse] Event data:", event.data);
+
     // resume: keep the plan and the lessons already written; only write what's missing.
     const { courseId, resume = false } = event.data as { courseId: string; resume?: boolean };
+
+    console.log("[buildCourse] Extracted courseId:", courseId);
+
+    if (typeof courseId !== "string" || !courseId.trim()) {
+      throw new Error(
+        `Missing courseId in Inngest event: ${JSON.stringify(event.data)}`
+      );
+    }
 
     // Captions first: one Supadata call per video, all at once, seconds at any length. Videos with no
     // captions are split into pieces for Gemini to watch. Anything already read for another course is reused.

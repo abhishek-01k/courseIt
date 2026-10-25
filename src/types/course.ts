@@ -9,4 +9,5 @@ export type CourseTileData = {
   durationSeconds: number;
   status: "queued" | "reading" | "building" | "ready" | "failed";
   addedBy?: string | null;
+  learners?: number;
 };

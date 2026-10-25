@@ -1,12 +1,14 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { after } from "next/server";
 import { Suspense } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { cn, formatDuration } from "@/lib/utils";
 import RefreshWhileBuilding from "@/modules/course/components/refresh-while-building";
 import { coursePath, lessonPath } from "@/lib/paths";
+import { enroll } from "@/modules/course/start";
 import { getCourseBySlug, getCoursePlan, getLesson, getMyAnswers, getMyNote } from "@/modules/course/queries";
 import CreatorCard, { CreatorCardFallback } from "./components/creator-card";
 import LessonNotes from "./components/lesson-notes";
@@ -26,6 +28,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   const [lesson, plan] = await Promise.all([getLesson(id, Number(number)), getCoursePlan(userId, id)]);
   if (!lesson) notFound();
   const lessonId = lesson.id;
+  after(() => enroll(userId, id)); // starting a lesson enrolls you; runs after the response
   const [answers, note] = await Promise.all([getMyAnswers(userId, lessonId), getMyNote(userId, lessonId)]);
 
   const building = course.status !== "ready" && course.status !== "failed";

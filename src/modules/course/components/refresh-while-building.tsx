@@ -7,7 +7,7 @@ import { useEffect } from "react";
 export default function RefreshWhileBuilding() {
   const router = useRouter();
   useEffect(() => {
-    const timer = setInterval(() => router.refresh(), 2000);
+    const timer = setInterval(() => router.refresh(), 10000);
     return () => clearInterval(timer);
   }, [router]);
   return null;

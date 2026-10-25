@@ -1,4 +1,4 @@
-import { BookOpen, Home, NotebookPen, Users } from "lucide-react";
+import { BookOpen, Home, Map as MapIcon, NotebookPen, Users } from "lucide-react";
 import type { AppNavLink } from "@/types/app-sidebar";
 import type { LessonFormat } from "@/types/format-toggle";
 import type { HowStep } from "@/types/how-it-works";
@@ -56,7 +56,8 @@ export const NAV_LINKS: NavLink[] = [
 export const APP_NAV_LINKS: AppNavLink[] = [
   { id: 1, title: "Today", href: "/dashboard", icon: Home },
   { id: 2, title: "My courses", href: "/courses", icon: BookOpen },
-  { id: 3, title: "Notes", href: "/notes", icon: NotebookPen },
+  { id: 3, title: "Roadmaps", href: "/roadmaps", icon: MapIcon },
+  { id: 4, title: "Notes", href: "/notes", icon: NotebookPen },
 ];
 
 export const APP_EXPLORE_LINKS: AppNavLink[] = [{ id: 1, title: "Community", href: "/community", icon: Users }];

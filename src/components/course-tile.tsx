@@ -35,9 +35,14 @@ export default function CourseTile({ course }: { course: CourseTileData }) {
       <div className="flex flex-col gap-1.5 px-2 pb-2">
         <h3 className="line-clamp-2 text-h3 font-medium">{course.title}</h3>
         <span className="text-[0.9rem] font-medium">{course.channel}</span>
-        {course.addedBy && (
-          <span className="border-t pt-2.5 text-[0.85rem] text-ink-soft">
-            added by <span className="font-medium text-ink">{course.addedBy.split(" ")[0]}</span>
+        {(course.addedBy || course.learners !== undefined) && (
+          <span className="flex justify-between gap-3 border-t pt-2.5 text-[0.85rem] text-ink-soft">
+            {course.addedBy && (
+              <span>
+                added by <span className="font-medium text-ink">{course.addedBy.split(" ")[0]}</span>
+              </span>
+            )}
+            {course.learners !== undefined && <span className="ml-auto tabular-nums">{course.learners.toLocaleString("en")} learning</span>}
           </span>
         )}
       </div>

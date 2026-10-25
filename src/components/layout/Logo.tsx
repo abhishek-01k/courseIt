@@ -24,7 +24,7 @@ export default function Logo() {
   return (
     <Link href="/" className="inline-flex items-center gap-2 font-display text-[1.15rem] font-medium leading-none tracking-[-0.02em] text-ink">
       <LogoMark className="h-5 w-[27px]" />
-      courseit
+      <span className="group-data-[collapsed=true]/side:sr-only">courseit</span>
     </Link>
   );
 }

@@ -30,7 +30,7 @@ export default function UserMenu({ name, image, plan }: UserMenuProps) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="group flex w-full items-center gap-2.5 rounded-[18px] bg-surface px-3 py-2.5 text-left shadow-[0_0_0_1px_var(--line)] transition-colors outline-none hover:bg-lime-soft/50 focus-visible:ring-2 focus-visible:ring-dusk data-popup-open:bg-lime-soft/50">
+      <DropdownMenuTrigger aria-label={`Account: ${name}`} className="group flex w-full items-center gap-2.5 rounded-[18px] bg-surface px-3 py-2.5 group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0 text-left shadow-[0_0_0_1px_var(--line)] transition-colors outline-none hover:bg-lime-soft/50 focus-visible:ring-2 focus-visible:ring-dusk data-popup-open:bg-lime-soft/50">
         {image ? (
           <Image src={image} alt="" width={36} height={36} className="size-9 shrink-0 rounded-full" />
         ) : (
@@ -38,11 +38,11 @@ export default function UserMenu({ name, image, plan }: UserMenuProps) {
             {initials}
           </span>
         )}
-        <span className="min-w-0 flex-1">
+        <span className="min-w-0 flex-1 group-data-[collapsed=true]/side:hidden">
           <span className="block truncate text-[0.9rem] font-medium">{name}</span>
           <span className="block text-[0.78rem] text-ink-soft">{plan}</span>
         </span>
-        <ChevronDown aria-hidden="true" className="size-4.5 shrink-0 text-ink-soft transition-transform duration-200 group-data-popup-open:rotate-180" />
+        <ChevronDown aria-hidden="true" className="size-4.5 shrink-0 text-ink-soft group-data-[collapsed=true]/side:hidden transition-transform duration-200 group-data-popup-open:rotate-180" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent side="top" sideOffset={8} className="rounded-[18px] bg-surface p-1.5 shadow-[0_0_0_1px_var(--line),0_24px_48px_-20px_rgba(22,49,92,0.4)] ring-0">

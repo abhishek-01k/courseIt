@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,12 +8,21 @@ import { setDailyMinutesAction } from "../actions";
 
 const PRESETS = [30, 60, 90, 120];
 
-// Daily learning time, for all courses. Changing it re-packs every course's days at once; nothing is regenerated.
+// Daily learning time, for all courses. Picking a pace only selects it; Save changes stores it and re-packs
+// every course's days at once (nothing is regenerated).
 export default function PacePicker({ minutesPerDay }: { minutesPerDay: number }) {
   const [custom, setCustom] = useState(!PRESETS.includes(minutesPerDay));
   const [value, setValue] = useState(String(minutesPerDay));
+  const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
-  const choose = (minutes: number) => start(() => setDailyMinutesAction(minutes));
+
+  const minutes = Number(value);
+  const valid = Number.isInteger(minutes) && minutes >= 5 && minutes <= 480;
+  const changed = valid && minutes !== minutesPerDay;
+  const pick = (next: string) => {
+    setValue(next);
+    setSaved(false);
+  };
 
   const chip = (active: boolean) =>
     cn(
@@ -21,10 +31,21 @@ export default function PacePicker({ minutesPerDay }: { minutesPerDay: number })
     );
 
   return (
-    <div className="flex flex-col gap-3 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)]" aria-busy={pending}>
+    <form
+      className="flex flex-col gap-4 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)]"
+      aria-busy={pending}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!changed) return;
+        start(async () => {
+          await setDailyMinutesAction(minutes);
+          setSaved(true);
+        });
+      }}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-medium">How much time do you have each day?</p>
-        <span className="text-[0.9rem] text-ink-soft tabular-nums">{minutesPerDay} min a day</span>
+        <span className="text-[0.9rem] text-ink-soft tabular-nums">Now: {minutesPerDay} min a day</span>
       </div>
       <div role="radiogroup" aria-label="Minutes a day" className="flex flex-wrap gap-2">
         <button type="button" role="radio" aria-checked={custom} onClick={() => setCustom(true)} className={chip(custom)}>
@@ -35,27 +56,19 @@ export default function PacePicker({ minutesPerDay }: { minutesPerDay: number })
             key={m}
             type="button"
             role="radio"
-            aria-checked={!custom && minutesPerDay === m}
+            aria-checked={!custom && minutes === m}
             onClick={() => {
               setCustom(false);
-              setValue(String(m));
-              choose(m);
+              pick(String(m));
             }}
-            className={chip(!custom && minutesPerDay === m)}
+            className={chip(!custom && minutes === m)}
           >
             {m} min
           </button>
         ))}
       </div>
       {custom && (
-        <form
-          className="flex flex-wrap items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const minutes = Number(value);
-            if (minutes >= 5 && minutes <= 480) choose(minutes);
-          }}
-        >
+        <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="custom-pace" className="text-[0.9rem] text-ink-soft">
             Minutes a day
           </label>
@@ -66,14 +79,30 @@ export default function PacePicker({ minutesPerDay }: { minutesPerDay: number })
             min={5}
             max={480}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => pick(e.target.value)}
+            aria-invalid={!valid}
+            aria-describedby="custom-pace-hint"
             className="min-h-11 w-24 rounded-xl bg-paper px-3 text-ink shadow-[inset_0_0_0_1px_var(--line)] outline-none focus-visible:ring-2 focus-visible:ring-dusk"
           />
-          <Button type="submit" size="lg" variant="outline" disabled={pending}>
-            Set pace
-          </Button>
-        </form>
+          <span id="custom-pace-hint" className={cn("text-[0.85rem]", valid ? "text-ink-soft" : "text-warn-fg")}>
+            5 to 480 minutes
+          </span>
+        </div>
       )}
-    </div>
+      <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+        <Button type="submit" size="lg" disabled={!changed || pending}>
+          {pending ? "Saving…" : "Save changes"}
+        </Button>
+        <span aria-live="polite" className="text-[0.88rem] text-ink-soft">
+          {pending ? null : saved && !changed ? (
+            <span className="inline-flex items-center gap-1 text-ok-fg">
+              <Check aria-hidden="true" className="size-4" /> Saved. Your course plans now use {minutesPerDay} min a day.
+            </span>
+          ) : changed ? (
+            `Not saved yet: ${minutes} min a day`
+          ) : null}
+        </span>
+      </div>
+    </form>
   );
 }

@@ -2,10 +2,14 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
+import { connection } from "next/server";
 
 type Labels = { signedIn: string; signedOut: string; className?: string };
 
 async function Cta({ signedIn, signedOut, className }: Labels) {
+
+  await connection();
+
   const session = await auth();
   return session?.user ? (
     <Link href="/dashboard" className={className}>

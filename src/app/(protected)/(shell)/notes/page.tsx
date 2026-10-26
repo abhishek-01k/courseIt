@@ -3,6 +3,6 @@ import NotesPage from "@/modules/notes/notes-page";
 
 export const metadata: Metadata = { title: "Notes · CourseIt" };
 
-export default function Page() {
-  return <NotesPage />;
+export default function Page({ searchParams }: PageProps<"/notes">) {
+  return <NotesPage searchParams={searchParams} />;
 }

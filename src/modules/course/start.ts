@@ -4,6 +4,7 @@ import { courses, courseVideos, enrollments, videos } from "@/db/schema";
 import { BUILD_COURSE, inngest } from "@/inngest/client";
 import { COURSE_LIMITS } from "@/lib/constants";
 import { newSlug } from "@/lib/paths";
+import { formatDuration } from "@/lib/utils";
 import { fetchCourseSource, parseYouTubeUrl, YouTubeError } from "@/lib/youtube";
 
 type Started = { id: string; slug: string; status: (typeof courses.$inferSelect)["status"] };
@@ -56,9 +57,10 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
   }
 
   const durationSeconds = found.videos.reduce((total, v) => total + v.durationSeconds, 0);
-  // if (durationSeconds > COURSE_LIMITS.maxTotalSeconds) {
-  //   return { error: `That's over ${COURSE_LIMITS.maxTotalSeconds / 3600} hours of video. Try a shorter playlist for now.` };
-  // }
+  if (durationSeconds > COURSE_LIMITS.maxTotalSeconds) {
+    const what = source.type === "playlist" ? "That playlist" : "That video";
+    return { error: `${what} is ${formatDuration(durationSeconds)} long. We support up to ${COURSE_LIMITS.maxTotalSeconds / 3600} hours for now; try a shorter one.` };
+  }
 
   // neon-http has no interactive transactions; batch runs these in one transaction.
   const courseId = crypto.randomUUID();

@@ -203,7 +203,7 @@ export const TESTIMONIALS: Testimonial[] = [
 export const COURSE_LIMITS = {
   newCoursesPerDay: 3,
   maxPlaylistVideos: 200,
-  maxTotalSeconds: 12 * 3600,
+  maxTotalSeconds: 20 * 3600, // playlists are planned video by video, so long ones stay reliable
 };
 
 // AI models. Captions come from Supadata; Gemini only watches videos that have none. Every decision and

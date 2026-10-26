@@ -1,6 +1,6 @@
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { attempts, courses, enrollments, lessonNotes, lessonProgress, lessonWatch, roadmapFollows, roadmaps, userDays, users } from "@/db/schema";
+import { attempts, courses, enrollments, lessonProgress, lessonWatch, notes, roadmapFollows, roadmaps, userDays, users } from "@/db/schema";
 import { getCoursePlan } from "@/modules/course/queries";
 
 const dayKey = (date: Date, zone: string) => new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(date);
@@ -102,7 +102,7 @@ export async function getSidebarCounts(userId: string) {
       .select({ n: sql<number>`(select count(*) from ${roadmaps} where ${roadmaps.ownerId} = ${userId}) + (select count(*) from ${roadmapFollows} where ${roadmapFollows.userId} = ${userId})`.mapWith(Number) })
       .from(users)
       .where(eq(users.id, userId)),
-    db.select({ n: count() }).from(lessonNotes).where(eq(lessonNotes.userId, userId)),
+    db.select({ n: count() }).from(notes).where(eq(notes.userId, userId)),
   ]);
   return { "/courses": courseCount.n, "/roadmaps": roadmapCount.n, "/notes": noteCount.n };
 }

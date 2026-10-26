@@ -21,6 +21,8 @@ export const lessonPath = (slug: string, position: number) => `/courses/${slug}/
 /** The full-screen onboarding shown while a course builds. */
 export const buildPath = (slug: string) => `/build/${slug}`;
 export const roadmapPath = (slug: string) => `/roadmaps/${slug}`;
+/** One course's notes, lesson by lesson. */
+export const notesPath = (slug: string) => `/notes/${slug}`;
 /** Sign in, then come back here. */
 export const loginPath = (next: string) => `/login?callbackUrl=${encodeURIComponent(next)}`;
 /**
@@ -36,3 +38,5 @@ export function safeNext(next: unknown) {
     return "/dashboard";
   }
 }
+/** A lesson opened at a moment of its video (`seconds` = position in the whole video). */
+export const lessonAt = (slug: string, position: number, seconds: number) => `${lessonPath(slug, position)}?t=${Math.round(seconds)}`;

@@ -3,7 +3,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { Captions, CaptionsOff, Check, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, formatClock } from "@/lib/utils";
 import type { FocusPlayerHandle, FocusPlayerProps } from "@/types/lesson";
 
 // The parts of the YouTube IFrame Player API we use.
@@ -57,20 +57,14 @@ function loadYouTubeApi() {
   return api;
 }
 
-const clock = (s: number) => {
-  const t = Math.max(0, Math.floor(s));
-  const h = Math.floor(t / 3600);
-  const m = Math.floor((t % 3600) / 60);
-  const sec = String(t % 60).padStart(2, "0");
-  return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
-};
+const clock = formatClock;
 
 /**
  * Focus mode: YouTube's own controls are hidden and ours sit BELOW the video (YouTube's terms forbid
  * covering the player). The timeline covers only this lesson, not the whole 3–6 hour video, and real
  * watch time (unique seconds; skipping ahead doesn't count) is saved. A lesson counts as watched at 80%.
  */
-export default function FocusPlayer({ ref, lessonId, videoId, start, end, autoStart = false, endScreen, onEnded, onWatched, onPlay }: FocusPlayerProps & { ref?: React.Ref<FocusPlayerHandle> }) {
+export default function FocusPlayer({ ref, lessonId, videoId, start, end, startAt, marks = [], autoStart = false, endScreen, onEnded, onWatched, onPlay }: FocusPlayerProps & { ref?: React.Ref<FocusPlayerHandle> }) {
   const frame = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<YTPlayer | null>(null);
@@ -79,7 +73,9 @@ export default function FocusPlayer({ ref, lessonId, videoId, start, end, autoSt
   const onEndedRef = useRef(onEnded);
   const onWatchedRef = useRef(onWatched);
   const onPlayRef = useRef(onPlay);
-  const [time, setTime] = useState(start);
+  // A note link (?t=) opens the lesson at that moment; otherwise at the lesson start.
+  const from = startAt !== undefined && startAt > start && startAt < end ? Math.round(startAt) : start;
+  const [time, setTime] = useState(from);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -156,7 +152,7 @@ export default function FocusPlayer({ ref, lessonId, videoId, start, end, autoSt
       player.current = new window.YT.Player(host.current, {
         host: "https://www.youtube-nocookie.com",
         videoId,
-        playerVars: { start, end, controls: 0, disablekb: 1, fs: 0, rel: 0, playsinline: 1, iv_load_policy: 3, cc_load_policy: 0 },
+        playerVars: { start: from, end, controls: 0, disablekb: 1, fs: 0, rel: 0, playsinline: 1, iv_load_policy: 3, cc_load_policy: 0 },
         events: {
           onReady: () => {
             ready.current = true;
@@ -202,7 +198,7 @@ export default function FocusPlayer({ ref, lessonId, videoId, start, end, autoSt
       player.current = null;
       ready.current = false;
     };
-  }, [lessonId, videoId, start, end]);
+  }, [lessonId, videoId, start, end, from]);
 
   const play = () => {
     if (position >= length - 1) seek(0); // finished: Play rewatches from the start
@@ -219,6 +215,7 @@ export default function FocusPlayer({ ref, lessonId, videoId, start, end, autoSt
 
   // Lets the quiz send the video to the exact moment that explains a wrong answer.
   useImperativeHandle(ref, () => ({
+    now: () => Math.round(time),
     playFrom: (absoluteSeconds: number) => {
       seek(absoluteSeconds - start);
       play();
@@ -312,6 +309,7 @@ export default function FocusPlayer({ ref, lessonId, videoId, start, end, autoSt
 
         {/* Controls live under the video, never on top of it. */}
         <div className="flex flex-col gap-1.5 bg-[#0f1611] px-3 pt-2.5 pb-2 text-white">
+          <div className="relative flex items-center">
           <input
             type="range"
             min={0}
@@ -323,6 +321,16 @@ export default function FocusPlayer({ ref, lessonId, videoId, start, end, autoSt
             aria-valuetext={`${clock(position)} of ${clock(length)}`}
             className="h-1.5 w-full cursor-pointer accent-[#b8c460]"
           />
+          {/* Your notes on this lesson, as dots on the timeline. */}
+          {marks.map((m) => (
+            <span
+              key={m}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_2px_#0f1611]"
+              style={{ left: `${(Math.min(length, Math.max(0, m - start)) / length) * 100}%` }}
+            />
+          ))}
+          </div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={playing ? pause : play} aria-label={playing ? "Pause" : "Play"} className={control}>
               {playing ? <Pause className="size-5" /> : <Play className="size-5" />}

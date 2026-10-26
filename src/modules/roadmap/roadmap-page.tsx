@@ -319,45 +319,6 @@ export default async function RoadmapPage({
             </div>
           )}
 
-          {studying && (
-            <div className="flex flex-col gap-3 rounded-card bg-surface p-[22px] shadow-[0_0_0_1px_var(--line)]">
-              <h2 className="text-h3 font-medium">Keep going</h2>
-              <p className="text-[0.92rem] text-ink-soft">
-                Each course keeps its own day-by-day plan, packed from your
-                daily time.
-              </p>
-              <p className="text-[0.92rem] tabular-nums">
-                <span className="font-medium">
-                  {me?.minutesPerDay ?? 90} min a day
-                </span>{" "}
-                ·{" "}
-                <Link
-                  href="/settings"
-                  className="font-medium text-moss underline-offset-4 hover:underline"
-                >
-                  Change in Settings
-                </Link>
-              </p>
-              {nextCourse ? (
-                <Link
-                  href={coursePath(nextCourse.slug)}
-                  className="flex min-h-12 flex-col justify-center rounded-[22px] bg-moss px-5 py-2.5 text-on-moss transition-colors hover:bg-moss-dark focus-visible:ring-2 focus-visible:ring-dusk focus-visible:outline-none"
-                >
-                  <span className="text-[0.78rem] opacity-80">Continue</span>
-                  <span className="line-clamp-2 text-[0.92rem] font-medium">
-                    {nextCourse.title}
-                  </span>
-                </Link>
-              ) : (
-                <p className="text-[0.92rem] text-ink-soft">
-                  {roadmap.courseCount
-                    ? "Every course here is done. Nice work."
-                    : "Add a course to a stage to begin."}
-                </p>
-              )}
-            </div>
-          )}
-
           {(roadmap.published || roadmap.followerCount > 0) && (
             <section
               aria-labelledby="followers-title"

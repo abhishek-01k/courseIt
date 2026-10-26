@@ -75,12 +75,15 @@ Rules:
 const MIN_LESSON = 4 * 60;
 const GAP = 2 * 60;
 const CHUNK = 12 * 60;
+const MAX_LESSON = 30 * 60;
 
 /**
  * The model's plan can stop early or leave holes (seen: a 3.5h video planned only to 2h11m) and can
  * make lessons too short. This makes the plan whole without another AI call:
  * - overlaps are trimmed;
  * - any stretch over 2 minutes it skipped becomes lessons from the creator's chapters, or 12-minute parts;
+ * - lessons over 30 minutes are split at the creator's chapters inside them, then into equal parts
+ *   of at most 12 minutes (seen: a 1h48m "lesson" in a 2h video);
  * - lessons under 4 minutes are merged into the lesson before them (or after, for the first).
  */
 export function repairPlan(planned: PlannedLesson[], videos: Pick<VideoNotes, "id" | "title" | "durationSeconds" | "chapters">[]): PlannedLesson[] {
@@ -99,11 +102,31 @@ export function repairPlan(planned: PlannedLesson[], videos: Pick<VideoNotes, "i
         filled.push({ title: title.slice(0, 80), videoId: video.id, startSeconds: cuts[i], endSeconds: cuts[i + 1], summary: "" });
       }
     };
+    const split = (l: PlannedLesson): PlannedLesson[] => {
+      const length = l.endSeconds - l.startSeconds;
+      if (length <= MAX_LESSON) return [l];
+      const marks = video.chapters.map((c) => c.startSeconds).filter((t) => t - l.startSeconds >= MIN_LESSON && l.endSeconds - t >= MIN_LESSON);
+      if (marks.length) {
+        const cuts = [l.startSeconds, ...marks, l.endSeconds];
+        return cuts.slice(0, -1).flatMap((from, i) => {
+          const chapter = video.chapters.find((c) => c.startSeconds === from);
+          const piece = { ...l, startSeconds: from, endSeconds: cuts[i + 1] };
+          return split(i === 0 ? piece : { ...piece, title: (chapter?.title ?? l.title).slice(0, 80), summary: "" });
+        });
+      }
+      const parts = Math.ceil(length / CHUNK);
+      return Array.from({ length: parts }, (_, i) => ({
+        ...l,
+        title: `${l.title} (part ${i + 1} of ${parts})`.slice(0, 80),
+        startSeconds: Math.round(l.startSeconds + (i * length) / parts),
+        endSeconds: i === parts - 1 ? l.endSeconds : Math.round(l.startSeconds + ((i + 1) * length) / parts),
+      }));
+    };
     for (const l of own) {
       const start = Math.max(l.startSeconds, cursor);
       if (l.endSeconds - start < 30) continue;
       fill(cursor, start);
-      filled.push({ ...l, startSeconds: start });
+      filled.push(...split({ ...l, startSeconds: start }));
       cursor = l.endSeconds;
     }
     fill(cursor, video.durationSeconds);

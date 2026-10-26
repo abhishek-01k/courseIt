@@ -242,6 +242,23 @@ export const lessonNotes = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.lessonId] }), index("lesson_note_user_idx").on(t.userId, t.updatedAt)],
 );
 
+// A learner's note pinned to a moment of a lesson's video (`seconds` = position in the whole video, like
+// lesson.startSeconds). Many per lesson. Replaces lesson_note, which stays until the live site moves over.
+export const notes = pgTable(
+  "note",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    lessonId: text("lesson_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
+    courseId: text("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+    seconds: integer("seconds").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("note_user_lesson_idx").on(t.userId, t.lessonId, t.seconds), index("note_user_course_idx").on(t.userId, t.courseId, t.updatedAt)],
+);
+
 // A learner's placement test answers (questionId -> option, -1 = "I don't know this yet"). Retakes replace it.
 export const placementResults = pgTable(
   "placement_result",

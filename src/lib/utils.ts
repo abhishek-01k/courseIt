@@ -17,3 +17,12 @@ export function timeAgo(date: Date, now = new Date()) {
   const [unit, size] = STEPS.find(([, s]) => Math.abs(seconds) >= s) ?? ["day", 86400];
   return rtf.format(Math.round(seconds / size), unit);
 }
+
+/** 4:05, or 1:02:05 past an hour. */
+export function formatClock(seconds: number) {
+  const t = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}

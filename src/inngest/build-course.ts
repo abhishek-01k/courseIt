@@ -147,28 +147,40 @@ export const buildCourse = inngest.createFunction(
       ),
     );
 
-    const { ids: lessonIds } = await step.run("plan lessons", () =>
-      track(
-        courseId,
-        "plan",
-        "Planning the lessons with Nemotron 3 Ultra",
-        async () => {
-          await setCourse(courseId, { status: "building", progress: 50 });
-          // Existing lessons are never replaced: answers, watch time and notes of every learner hang off them.
-          const kept = await db.select({ id: lessons.id }).from(lessons).where(eq(lessons.courseId, courseId)).orderBy(asc(lessons.position));
-          if (kept.length) return { ids: kept.map((l) => l.id), model: null };
-          const [course] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId));
-          const list = await loadVideos(courseId);
-          const withNotes = await Promise.all(list.map(async (v) => ({ ...v, notes: await notesFor(v.id) })));
-          const plan = await planLessons(course.title, withNotes);
+    // Existing lessons are never replaced: answers, watch time and notes of every learner hang off them.
+    const kept = await step.run("existing lessons", async () => {
+      await setCourse(courseId, { status: "building", progress: 50 });
+      const rows = await db.select({ id: lessons.id }).from(lessons).where(eq(lessons.courseId, courseId)).orderBy(asc(lessons.position));
+      return rows.map((l) => l.id);
+    });
 
-          const rows = plan.lessons.map((l, position) => ({ ...l, id: crypto.randomUUID(), courseId, position }));
-          await db.batch([db.insert(lessons).values(rows), setCourse(courseId, { progress: 60 })]);
-          return { ids: rows.map((r) => r.id), model: plan.model };
-        },
-        (r) => (r.model ? `${r.ids.length} lessons · planned by ${AI.modelNames[r.model]}` : `Kept the existing ${r.ids.length} lessons`),
-      ),
-    );
+    let lessonIds = kept;
+    if (!kept.length) {
+      const [{ title }, list] = await step.run("course videos", async () => {
+        const [course] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId));
+        return [course, await loadVideos(courseId)] as const;
+      });
+      // Each video of a playlist is planned on its own, in parallel: small prompts, no single huge call
+      // that can stop early or time out, and one slow video doesn't hold up the rest.
+      const plans = await Promise.all(
+        list.map((video, i) =>
+          step.run(`plan ${video.id}`, () =>
+            track(
+              courseId,
+              list.length > 1 ? `plan:${video.id}` : "plan",
+              list.length > 1 ? `Planning video ${i + 1} of ${list.length}: ${video.title}` : "Planning the lessons with Nemotron 3 Ultra",
+              async () => planLessons(title, [{ ...video, notes: await notesFor(video.id) }]),
+              (plan) => `${plan.lessons.length} lessons · planned by ${AI.modelNames[plan.model]}`,
+            ),
+          ),
+        ),
+      );
+      lessonIds = await step.run("save the plan", async () => {
+        const rows = plans.flatMap((p) => p.lessons).map((l, position) => ({ ...l, id: crypto.randomUUID(), courseId, position }));
+        await db.batch([db.insert(lessons).values(rows), setCourse(courseId, { progress: 60 })]);
+        return rows.map((r) => r.id);
+      });
+    }
 
     const build = (lessonId: string) =>
       step.run(`write lesson ${lessonId}`, async () => {

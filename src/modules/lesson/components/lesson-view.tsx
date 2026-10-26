@@ -20,12 +20,13 @@ const tile = "flex min-h-11 flex-col items-start gap-0.5 rounded-2xl px-3 py-2.5
 // playlist and study tools on the right. The quiz opens in a dialog and can send the video back
 // to the exact moment that explains a wrong answer.
 export default function LessonView(props: LessonViewProps) {
-  const { courseHref, lessonId, videoId, startSeconds, endSeconds, ready, writing, questions, initialAnswers, initialNote, next, day } = props;
+  const { courseHref, lessonId, videoId, startSeconds, endSeconds, ready, writing, questions, initialAnswers, initialNotes, startAt, next, day } = props;
   const nextHref = next?.href ?? null;
   const player = useRef<FocusPlayerHandle>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const tabs = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>("mine");
+  const [notes, setNotes] = useState(initialNotes); // here, not in MyNotes, so the timeline can show them
   const [ended, setEnded] = useState(false);
   const [quizDone, setQuizDone] = useState(props.quizDone);
   const [autoplay, setAutoplay] = useAutoplay();
@@ -60,6 +61,8 @@ export default function LessonView(props: LessonViewProps) {
           videoId={videoId}
           start={startSeconds}
           end={endSeconds}
+          startAt={startAt}
+          marks={notes.map((n) => n.seconds)}
           autoStart={autoStart}
           endScreen={
             ended && (
@@ -100,7 +103,7 @@ export default function LessonView(props: LessonViewProps) {
           <div role="tablist" aria-label="Notes" className="flex gap-6 border-b">
             {(
               [
-                ["mine", "My notes"],
+                ["mine", notes.length ? `My notes · ${notes.length}` : "My notes"],
                 ["study", "Study notes"],
               ] as const
             ).map(([id, label]) => (
@@ -122,7 +125,14 @@ export default function LessonView(props: LessonViewProps) {
             {props.studyNotes}
           </div>
           <div role="tabpanel" id="panel-mine" aria-labelledby="tab-mine" hidden={tab !== "mine"}>
-            <MyNotes lessonId={lessonId} initial={initialNote} />
+            <MyNotes
+              lessonId={lessonId}
+              start={startSeconds}
+              notes={notes}
+              setNotes={setNotes}
+              now={() => player.current?.now() ?? startSeconds}
+              jump={(s) => player.current?.playFrom(s)}
+            />
           </div>
         </div>
       </div>
@@ -150,7 +160,7 @@ export default function LessonView(props: LessonViewProps) {
             <button type="button" onClick={() => showTab("mine")} className={cn(tile, "bg-lime-soft/60 transition-colors hover:bg-lime-soft")}>
               <NotebookPen aria-hidden="true" className="size-4.5 text-moss" />
               <span className="text-[0.92rem] font-semibold">My notes</span>
-              <span className="line-clamp-1 text-[0.75rem] leading-snug text-ink-soft">Your own notes</span>
+              <span className="line-clamp-1 text-[0.75rem] leading-snug text-ink-soft">{notes.length ? `${notes.length} pinned to moments` : "Pinned to moments"}</span>
             </button>
             {(
               [

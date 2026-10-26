@@ -28,7 +28,7 @@ const toolOf = (step: Step) =>
     ? "Supadata"
     : step.key.startsWith("watch:")
       ? "Gemini"
-      : step.key === "plan" || step.key === "placement"
+      : step.key === "plan" || step.key.startsWith("plan:") || step.key === "placement"
         ? (step.detail?.match(/Nemotron [\d.]+ \w+/)?.[0] ?? "Nemotron 3 Ultra")
         : step.key.startsWith("lesson:")
           ? (step.detail?.match(/Nemotron [\d.]+ \w+/)?.[0] ?? "Nemotron 3 Super")
@@ -44,9 +44,20 @@ function rows(steps: Step[], lessonCount: number): Row[] {
   const start = steps[0].startedAt;
   const out: Row[] = [];
   const lessons = steps.filter((s) => s.key.startsWith("lesson:"));
+  const plans = steps.filter((s) => s.key.startsWith("plan:")); // a playlist plans each video on its own
   for (const s of steps) {
-    if (s.key.startsWith("lesson:") || s.key === "finish") continue;
+    if (s.key.startsWith("lesson:") || s.key.startsWith("plan:") || s.key === "finish") continue;
     out.push({ key: s.key, at: elapsed(start, s.startedAt), text: s.label, tool: toolOf(s), status: s.status });
+  }
+  if (plans.length) {
+    const done = plans.filter((s) => s.status === "done").length;
+    out.push({
+      key: "plans",
+      at: elapsed(start, plans[0].startedAt),
+      text: `Planning ${plans.length} videos in parallel · ${done} of ${plans.length} done`,
+      tool: toolOf(plans[0]),
+      status: done === plans.length ? "done" : plans.some((s) => s.status === "running") ? "running" : "failed",
+    });
   }
   const [first, ...rest] = lessons;
   if (first) out.push({ key: first.key, at: elapsed(start, first.startedAt), text: first.label, tool: toolOf(first), status: first.status });

@@ -3,7 +3,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { db } from "@/db";
-import { attempts, lessonNotes, lessonProgress, lessons, lessonWatch, questions, users } from "@/db/schema";
+import { attempts, lessonProgress, lessons, lessonWatch, notes, questions, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 const validZone = (zone: string) => {
@@ -58,17 +58,37 @@ export async function saveAnswerAction(questionId: string, chosenIndex: number, 
 }
 
 /** The learner's own notes on a lesson; saved as they type. */
-export async function saveNoteAction(lessonId: string, body: string) {
+export type Note = { id: string; seconds: number; body: string };
+
+/** A note pinned to a moment of the lesson (`seconds` = position in the whole video, kept inside the lesson). */
+export async function addNoteAction(lessonId: string, seconds: number, body: string): Promise<Note | null> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const text = body.trim().slice(0, 5_000);
+  if (!userId || !text || !Number.isFinite(seconds)) return null;
+  const [lesson] = await db.select({ courseId: lessons.courseId, start: lessons.startSeconds, end: lessons.endSeconds }).from(lessons).where(eq(lessons.id, lessonId));
+  if (!lesson) return null;
+  const at = Math.round(Math.min(lesson.end - 1, Math.max(lesson.start, seconds)));
+  const [note] = await db.insert(notes).values({ userId, lessonId, courseId: lesson.courseId, seconds: at, body: text }).returning({ id: notes.id, seconds: notes.seconds, body: notes.body });
+  return note;
+}
+
+/** Edit a note's text (only your own). An empty text deletes it. */
+export async function updateNoteAction(noteId: string, body: string) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return;
-  const [lesson] = await db.select({ courseId: lessons.courseId }).from(lessons).where(eq(lessons.id, lessonId));
-  if (!lesson) return;
-  const text = body.slice(0, 20_000);
-  await db
-    .insert(lessonNotes)
-    .values({ userId, lessonId, courseId: lesson.courseId, body: text })
-    .onConflictDoUpdate({ target: [lessonNotes.userId, lessonNotes.lessonId], set: { body: text, updatedAt: new Date() } });
+  const text = body.trim().slice(0, 5_000);
+  const mine = and(eq(notes.id, noteId), eq(notes.userId, userId));
+  if (!text) await db.delete(notes).where(mine);
+  else await db.update(notes).set({ body: text, updatedAt: new Date() }).where(mine);
+}
+
+export async function deleteNoteAction(noteId: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return;
+  await db.delete(notes).where(and(eq(notes.id, noteId), eq(notes.userId, userId)));
 }
 
 /** "Mark as completed": counts the lesson as done (the same as watching 80% of it). */

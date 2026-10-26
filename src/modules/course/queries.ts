@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, ilike, ne, or } from "drizzle-orm";
 import { db } from "@/db";
-import { attempts, courses, courseSteps, courseVideos, enrollments, lessonNotes, lessonProgress, lessons, lessonSkips, lessonWatch, questions, users, videos } from "@/db/schema";
+import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, questions, users, videos } from "@/db/schema";
 import { packDays } from "@/lib/pace";
 
 export async function getCourseBySlug(slug: string) {
@@ -140,9 +140,13 @@ export async function getCoursePlan(userId: string, courseId: string) {
 
 export type CoursePlan = Awaited<ReturnType<typeof getCoursePlan>>;
 
-export async function getMyNote(userId: string, lessonId: string) {
-  const [note] = await db.select({ body: lessonNotes.body }).from(lessonNotes).where(and(eq(lessonNotes.userId, userId), eq(lessonNotes.lessonId, lessonId)));
-  return note?.body ?? "";
+/** The learner's notes on a lesson, in video order. */
+export function getMyNotes(userId: string, lessonId: string) {
+  return db
+    .select({ id: notes.id, seconds: notes.seconds, body: notes.body })
+    .from(notes)
+    .where(and(eq(notes.userId, userId), eq(notes.lessonId, lessonId)))
+    .orderBy(asc(notes.seconds), asc(notes.createdAt));
 }
 
 /** How many creator chapters the course's videos have (shown on the onboarding screen). */

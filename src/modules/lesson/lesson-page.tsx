@@ -9,15 +9,15 @@ import { cn, formatDuration } from "@/lib/utils";
 import RefreshWhileBuilding from "@/modules/course/components/refresh-while-building";
 import { coursePath, lessonPath } from "@/lib/paths";
 import { enroll } from "@/modules/course/start";
-import { getCourseBySlug, getCoursePlan, getLesson, getMyAnswers, getMyNote } from "@/modules/course/queries";
+import { getCourseBySlug, getCoursePlan, getLesson, getMyAnswers, getMyNotes } from "@/modules/course/queries";
 import CreatorCard, { CreatorCardFallback } from "./components/creator-card";
 import LessonNotes from "./components/lesson-notes";
 import LessonView from "./components/lesson-view";
 import MarkComplete from "./components/mark-complete";
 import Playlist from "./components/playlist";
 
-export default async function LessonPage({ params }: { params: Promise<{ slug: string; lesson: string }> }) {
-  const [{ slug, lesson: number }, session] = await Promise.all([params, auth()]);
+export default async function LessonPage({ params, searchParams }: { params: Promise<{ slug: string; lesson: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [{ slug, lesson: number }, { t }, session] = await Promise.all([params, searchParams, auth()]);
   const userId = session?.user?.id;
   if (!userId) redirect("/login");
   if (!/^[1-9]\d{0,3}$/.test(number)) notFound();
@@ -29,7 +29,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
   if (!lesson) notFound();
   const lessonId = lesson.id;
   after(() => enroll(userId, id)); // starting a lesson enrolls you; runs after the response
-  const [answers, note] = await Promise.all([getMyAnswers(userId, lessonId), getMyNote(userId, lessonId)]);
+  const [answers, myNotes] = await Promise.all([getMyAnswers(userId, lessonId), getMyNotes(userId, lessonId)]);
 
   const building = course.status !== "ready" && course.status !== "failed";
   const writing = !lesson.ready && building;
@@ -72,7 +72,8 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
         writing={writing}
         questions={lesson.questions}
         initialAnswers={answers}
-        initialNote={note}
+        initialNotes={myNotes}
+        startAt={typeof t === "string" && /^\d{1,6}$/.test(t) ? Number(t) : undefined} // from a note link: ?t=<seconds>
         next={next ? { href: href(next)!, position: next.position, title: next.title, sameDay: next.day === me?.day, thumbnail: next.thumbnail } : null}
         day={me?.day ?? 1}
         quizDone={me?.quizDone ?? false}

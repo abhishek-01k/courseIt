@@ -10,9 +10,9 @@ import { submitPlacementAction } from "../actions";
 
 type Question = { id: string; prompt: string; options: string[]; covers: string };
 
-const DONT_KNOW = -1;
+const SKIP = -1; // graded like a wrong answer: those lessons stay in the plan
 
-// One question at a time. Answers are only graded on the server, after the last question.
+// One question at a time, forward only: 3 answers plus "Skip this question". Graded on the server after the last one.
 export default function PlacementQuiz({ courseId, questions }: { courseId: string; questions: Question[] }) {
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -54,27 +54,22 @@ export default function PlacementQuiz({ courseId, questions }: { courseId: strin
         {q.options.map((text, k) => (
           <button key={k} type="button" role="radio" aria-checked={choice === k} onClick={() => pick(k)} className={option(choice === k)}>
             <span aria-hidden="true" className={key(choice === k)}>
-              {"ABCD"[k]}
+              {String.fromCharCode(65 + k)}
             </span>
             {text}
           </button>
         ))}
-        <button type="button" role="radio" aria-checked={choice === DONT_KNOW} onClick={() => pick(DONT_KNOW)} className={cn(option(choice === DONT_KNOW), "bg-transparent text-ink-soft")}>
-          <span aria-hidden="true" className={key(choice === DONT_KNOW)}>
+        <button type="button" role="radio" aria-checked={choice === SKIP} onClick={() => pick(SKIP)} className={cn(option(choice === SKIP), "bg-transparent text-ink-soft")}>
+          <span aria-hidden="true" className={key(choice === SKIP)}>
             ?
           </span>
-          I don&apos;t know this yet
+          Skip this question
         </button>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-[0.88rem] text-ink-soft">No score to beat. &ldquo;I don&apos;t know this yet&rdquo; keeps those lessons in your plan.</span>
+        <span className="text-[0.88rem] text-ink-soft">No score to beat, and no going back. &ldquo;Skip this question&rdquo; keeps those lessons in your plan.</span>
         <div className="flex gap-2">
-          {i > 0 && (
-            <Button size="lg" variant="outline" onClick={() => setI(i - 1)}>
-              Back
-            </Button>
-          )}
           {last ? (
             <Button size="lg" disabled={choice === undefined || pending} onClick={() => start(async () => void (await act(() => submitPlacementAction(courseId, answers), "Couldn't submit your test.")))}>
               {pending && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}

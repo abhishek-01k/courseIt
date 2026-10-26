@@ -45,7 +45,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 class Busy extends Error {}
 class TimedOut extends Busy {}
 
-async function callNemotron(model: Nemotron, system: string, user: string, think: boolean, maxTokens: number, timeoutMs: number) {
+/** A JSON Schema the answer must match. Token Factory enforces it while the model writes (strict json_schema). */
+export type Schema = Record<string, unknown>;
+
+async function callNemotron(model: Nemotron, system: string, user: string, schema: Schema, think: boolean, maxTokens: number, timeoutMs: number) {
   let res: Response;
   try {
     res = await fetch("https://api.tokenfactory.nebius.com/v1/chat/completions", {
@@ -57,7 +60,8 @@ async function callNemotron(model: Nemotron, system: string, user: string, think
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-        response_format: { type: "json_object" },
+        // json_object only promises JSON; a strict schema also fixes its shape (seen: options sent as one string).
+        response_format: { type: "json_schema", json_schema: { name: "answer", strict: true, schema } },
         temperature: 0.3,
         max_tokens: maxTokens, // includes the thinking tokens
         ...(!think && { chat_template_kwargs: { enable_thinking: false } }),
@@ -89,6 +93,7 @@ export async function nemotronJson(
   model: Nemotron,
   system: string,
   user: string,
+  schema: Schema,
   { think = true, maxTokens = 16000 }: { think?: boolean; maxTokens?: number } = {},
 ): Promise<{ json: unknown; model: Nemotron }> {
   let last: Error = new Error("No model answered");
@@ -100,7 +105,7 @@ export async function nemotronJson(
       if (left < 20_000) throw last;
       await sleep(wait);
       try {
-        return { json: await callNemotron(candidate, system, user, think, maxTokens, Math.min(120_000, left)), model: candidate };
+        return { json: await callNemotron(candidate, system, user, schema, think, maxTokens, Math.min(120_000, left)), model: candidate };
       } catch (error) {
         if (!(error instanceof Busy)) throw error;
         last = error;

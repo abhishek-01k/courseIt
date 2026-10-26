@@ -260,7 +260,7 @@ export const notes = pgTable(
   (t) => [index("note_user_lesson_idx").on(t.userId, t.lessonId, t.seconds), index("note_user_course_idx").on(t.userId, t.courseId, t.updatedAt)],
 );
 
-// A learner's placement test answers (questionId -> option, -1 = "I don't know this yet"). Retakes replace it.
+// A learner's placement test answers (questionId -> option, -1 = "Skip this question"). Retakes replace it.
 export const placementResults = pgTable(
   "placement_result",
   {

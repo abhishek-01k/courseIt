@@ -3,7 +3,7 @@ type Lesson = { id: string; position: number };
 
 /**
  * Which lessons a learner can skip after the placement test: a lesson is skipped only if every question
- * covering it was answered right ("I don't know this yet" = -1 counts as not known). Lesson 1 never is.
+ * covering it was answered right ("Skip this question" = -1 counts as not known). Lesson 1 never is.
  */
 export function gradePlacement(test: Question[], answers: Record<string, number>, lessons: Lesson[]) {
   const known = new Set<string>();

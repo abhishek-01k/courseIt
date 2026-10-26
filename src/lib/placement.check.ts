@@ -13,6 +13,6 @@ const test = [
 assert.deepEqual(gradePlacement(test, { q1: 0, q2: 1, q3: 2 }, lessons), { score: 3, skip: ["b", "c", "d"] });
 // q3 wrong: c and d stay (c had one right and one wrong answer — not enough).
 assert.deepEqual(gradePlacement(test, { q1: 0, q2: 1, q3: 0 }, lessons), { score: 2, skip: ["b"] });
-// "I don't know this yet" (-1) and unanswered both keep lessons.
+// "Skip this question" (-1) and unanswered both keep lessons.
 assert.deepEqual(gradePlacement(test, { q1: -1, q2: 1 }, lessons), { score: 1, skip: [] });
 console.log("placement checks passed");

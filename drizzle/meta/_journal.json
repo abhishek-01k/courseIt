@@ -127,6 +127,13 @@
       "when": 1793047791949,
       "tag": "0017_lesson_reading",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793050590043,
+      "tag": "0018_placement_three_options",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { nemotronJson, type Nemotron } from "@/lib/ai";
+import { nemotronJson, type Nemotron, type Schema } from "@/lib/ai";
 import type { Chapter } from "@/types/youtube";
 
 // Everything here treats model output as untrusted: wrong types, out-of-range times and missing
@@ -17,6 +17,21 @@ export type WrittenLesson = {
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const int = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : NaN);
 const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi);
+
+// JSON Schemas for each answer. Token Factory enforces them, so the JSON is always valid and shaped right;
+// the checks below still guard the meaning (times inside the video, lesson numbers that exist).
+const text = { type: "string", minLength: 1 };
+const integer = (minimum?: number, maximum?: number) => ({ type: "integer", ...(minimum !== undefined && { minimum }), ...(maximum !== undefined && { maximum }) });
+const list = (items: Schema, minItems: number, maxItems?: number) => ({ type: "array", items, minItems, ...(maxItems && { maxItems }) });
+const object = (properties: Record<string, Schema>): Schema => ({ type: "object", additionalProperties: false, required: Object.keys(properties), properties });
+const choices = (n: number) => ({ options: list(text, n, n), answerIndex: integer(0, n - 1) });
+
+const PLAN = object({ lessons: list(object({ title: text, videoId: text, startSeconds: integer(0), endSeconds: integer(0), summary: text }), 1) });
+const LESSON = object({ notes: text, questions: list(object({ prompt: text, ...choices(4), explanation: text, replaySeconds: integer(0) }), 4, 5) });
+// The test shows 3 answers plus "Skip this question".
+const PLACEMENT_OPTIONS = 3;
+const PLACEMENT = object({ questions: list(object({ prompt: text, ...choices(PLACEMENT_OPTIONS), explanation: text, lessons: list(integer(1), 1, 3) }), 10, 10) });
+const MIN_PLACEMENT_QUESTIONS = 3;
 
 /** "[01:02:05] text" lines → seconds. */
 const hhmmss = (s: number) =>
@@ -48,6 +63,7 @@ Rules:
           return `=== VIDEO ${v.id} "${v.title}" (length ${v.durationSeconds}s)\n${chapters}${v.notes}`;
         })
         .join("\n\n"),
+    PLAN,
     { think: false, maxTokens: 32000 }, // thinking off: ~8s instead of 10–100s, same plan quality in tests
   );
 
@@ -160,11 +176,12 @@ export async function writeLesson(courseTitle: string, lesson: PlannedLesson, vi
 {"notes":string,"questions":[{"prompt":string,"options":[string,string,string,string],"answerIndex":integer,"explanation":string,"replaySeconds":integer}]}
 Rules:
 - notes: markdown study notes (250–600 words) with ## headings, key terms in **bold**, and any code in fenced blocks. Teach, don't summarise the video.
-- 4 or 5 multiple-choice questions that check understanding, not memory of wording. Exactly one correct option; wrong options must be plausible.
+- 4 or 5 multiple-choice questions that check understanding, not memory of wording. Exactly one correct option; wrong options must be plausible. Options are the answer text only, no "A)" labels.
 - answerIndex is the 0-based index of the correct option.
 - explanation: 1–2 sentences on why the answer is right.
 - replaySeconds: the moment in the video (seconds) where this is explained, between ${lesson.startSeconds} and ${lesson.endSeconds}. The learner is sent there after a wrong answer.`,
     `Course: "${courseTitle}"\nLesson: "${lesson.title}" (${lesson.startSeconds}s–${lesson.endSeconds}s)\nGoal: ${lesson.summary}\n\nNotes:\n${source}`,
+    LESSON,
   );
 
   const o = (raw ?? {}) as Record<string, unknown>;
@@ -233,14 +250,15 @@ export async function writePlacementTest(courseTitle: string, lessons: LessonFor
   const { json: raw } = await nemotronJson(
     "ultra",
     `You write a placement test for an online course built from a video lecture. Its job: find out which lessons a learner ALREADY understands, so they can skip them. Reply with JSON only:
-{"questions":[{"prompt":string,"options":[string,string,string,string],"answerIndex":integer,"explanation":string,"lessons":[integer]}]}
+{"questions":[{"prompt":string,"options":[string,string,string],"answerIndex":integer,"explanation":string,"lessons":[integer]}]}
 Rules:
 - Exactly 10 questions, spread across the course from early to late lessons.
 - Each question tests understanding of an idea as the course teaches it, answerable by someone who knows the subject WITHOUT having watched this video. Never ask about the video itself (examples used, what the speaker said, timestamps).
 - "lessons": the 1-3 lesson numbers (the L numbers below) the question proves the learner knows.
-- Exactly one correct option; wrong options must be plausible to someone who doesn't know it.
+- Exactly 3 options: one correct, two wrong ones that are plausible to someone who doesn't know it. The learner also gets "Skip this question", so never add "I don't know" or "None of the above". Options are the answer text only, no "A)" labels.
 - explanation: one sentence on why the answer is right.`,
     `Course: "${courseTitle}"\n\n${sections}`,
+    PLACEMENT,
     { think: false, maxTokens: 12000 },
   );
 
@@ -252,12 +270,12 @@ Rules:
       const options = Array.isArray(x.options) ? x.options.map(str) : [];
       const answerIndex = int(x.answerIndex);
       const lessonIds = [...new Set((Array.isArray(x.lessons) ? x.lessons : []).map((n) => byNumber.get(int(n))).filter((id): id is string => Boolean(id)))].slice(0, 3);
-      if (!str(x.prompt) || options.length !== 4 || options.some((o) => !o) || !(answerIndex >= 0 && answerIndex < 4) || !lessonIds.length) return null;
+      if (!str(x.prompt) || options.length !== PLACEMENT_OPTIONS || options.some((o) => !o) || !(answerIndex >= 0 && answerIndex < PLACEMENT_OPTIONS) || !lessonIds.length) return null;
       return { prompt: str(x.prompt), ...shuffled(options, answerIndex), explanation: str(x.explanation), lessonIds };
     })
     .filter((q) => q !== null)
     .slice(0, 10);
 
-  if (questions.length < 6) throw new Error(`Placement test came back with only ${questions.length} usable questions`);
+  if (questions.length < MIN_PLACEMENT_QUESTIONS) throw new Error(`Placement test came back with only ${questions.length} usable questions`);
   return questions;
 }

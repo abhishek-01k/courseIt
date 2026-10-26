@@ -22,6 +22,27 @@ YouTube has the best free teachers in the world. What it doesn't have is a **cou
 
 ---
 
+## The build pipeline
+
+```mermaid
+flowchart LR
+  A[YouTube link] --> B[YouTube Data API<br/>titles, chapters, durations]
+  B --> C{Captions?}
+  C -- yes --> D[Supadata transcript]
+  C -- no --> E[Gemini watches<br/>10-min pieces in parallel]
+  D --> F[Nemotron 3 Ultra<br/>plans the lessons]
+  E --> F
+  F --> G[Nemotron 3 Ultra<br/>placement test]
+  F --> H[Nemotron 3 Super<br/>notes + quiz, every lesson in parallel]
+  F --> I[Tavily<br/>further reading per lesson]
+  G --> J[(Neon Postgres)]
+  H --> J
+  I --> J
+  J --> K[Learner: plan, lessons, quizzes, progress]
+```
+
+---
+
 ## What it does
 
 ### 1. Paste a link, get a course
@@ -33,7 +54,7 @@ YouTube has the best free teachers in the world. What it doesn't have is a **cou
 The build screen shows every step as it happens, like a model's thinking panel: fetching each transcript, which Nemotron model planned the course, each lesson being written ("Nemotron 3 Super · 412 words of notes · 5 quiz questions · 3 reading links via Tavily"), and the placement test. You can start the first lesson while the rest are still being written.
 
 ### 3. A placement test that skips what you know
-Nemotron 3 Ultra writes a **10-question placement test** for every course. Each question is tied to the 1 to 3 lessons it proves you know. Answer it, and those lessons drop out of your plan. A "Full course / My course" toggle shows the hours and days you saved, and you can switch any lesson back into your plan.
+Nemotron 3 Ultra writes a **10-question placement test** for every course (a test with fewer than 3 usable questions is rejected and rewritten). Each question has 3 answers plus **"Skip this question"**, comes one at a time with no going back, and is tied to the 1 to 3 lessons it proves you know. Answer right, and those lessons drop out of your plan; skipping keeps them in. A "Full course / My course" toggle shows the hours and days you saved, and you can switch any lesson back into your plan.
 
 ### 4. A daily plan that fits your time
 Pick how many minutes a day you have (Settings). Every course is packed into days around it, and the plan updates instantly when you change your pace or skip lessons.
@@ -72,7 +93,7 @@ Every word a learner reads and every decision about a course comes from **NVIDIA
 | **Backups** when a model is busy | **Nemotron 3.5 Lightning**, **Nemotron 3 Nano** | Fast, cheap, always available | `AI.fallbacks` in [`constants.ts`](src/lib/constants.ts) |
 
 ### What makes it reliable
-- **JSON mode everywhere** (`response_format: json_object`), and every answer is validated: wrong types, out-of-range timestamps and missing fields are dropped or clamped, and an unusable answer throws so the step retries.
+- **Schema-enforced JSON on every call.** Each request sends a strict JSON Schema (`response_format: json_schema`) for its answer: the lesson plan, each lesson (4–5 questions of exactly 4 options) and the placement test (exactly 10 questions of 3 options). Token Factory enforces the schema while the model writes, so answers are always valid JSON of the right shape. On top of that, every answer is checked for meaning: timestamps are clamped into the video, lesson numbers must exist, and an unusable answer throws so the step retries.
 - **Thinking turned off where it doesn't pay.** Planning with thinking on took 10–100 s; with `chat_template_kwargs: { enable_thinking: false }` it takes about 8 s with the same plan quality in our tests.
 - **Busy-proof.** On 429, 529, 5xx or a timeout, a call waits (2 s, then 6 s) and then moves down a chain of Nemotron models: Ultra → Super → Lightning, Super → Lightning → Nano. A learner gets a lesson instead of an error, and the build screen shows which model answered.
 - **Durable, resumable builds.** Each step (transcript, plan, every lesson, placement test) is a separate [Inngest](https://www.inngest.com/) step whose result is saved. A crash or redeploy resumes where it stopped, a failed lesson doesn't sink the course, and "Retry" writes only what's missing.
@@ -87,25 +108,6 @@ One API key and one OpenAI-compatible endpoint gave access to four Nemotron size
 - **Google Gemini** (`gemini-3.8-flash`): fallback only, for videos with **no captions**. It watches the public video in 10-minute pieces in parallel and writes timestamped notes; Nemotron then does all the planning and writing. Nothing is downloaded or scraped.
 - **YouTube Data API v3:** titles, durations, chapters, thumbnails and channel info.
 - Nebius Serverless Endpoints and Jobs are **not** used: background work runs on Inngest, and the app is hosted on Vercel.
-
-### The build pipeline
-
-```mermaid
-flowchart LR
-  A[YouTube link] --> B[YouTube Data API<br/>titles, chapters, durations]
-  B --> C{Captions?}
-  C -- yes --> D[Supadata transcript]
-  C -- no --> E[Gemini watches<br/>10-min pieces in parallel]
-  D --> F[Nemotron 3 Ultra<br/>plans the lessons]
-  E --> F
-  F --> G[Nemotron 3 Ultra<br/>placement test]
-  F --> H[Nemotron 3 Super<br/>notes + quiz, every lesson in parallel]
-  F --> I[Tavily<br/>further reading per lesson]
-  G --> J[(Neon Postgres)]
-  H --> J
-  I --> J
-  J --> K[Learner: plan, lessons, quizzes, progress]
-```
 
 ---
 
@@ -195,12 +197,12 @@ drizzle/               SQL migrations
 - The OpenAI-compatible endpoint meant no SDK and no new integration: one `fetch` to `/v1/chat/completions` reaches every Nemotron size.
 - Having Ultra, Super, Nano and Lightning behind one key made per-task model choice and fallback chains trivial to build.
 - Nemotron 3 Ultra's long context handles hours of transcript in one call, which is what makes whole-course planning and placement tests possible.
-- JSON mode was dependable enough that every answer goes straight into a validator.
+- Strict `json_schema` output works with Nemotron, including with thinking on (reasoning comes back separately). It fixed the occasional malformed answers we saw with plain `json_object` mode: a question's options returned as one string, or JSON that didn't parse.
 
 **What could be better**
 - **Capacity under parallel load.** Writing every lesson of a course at once can hit busy responses (429 / 529), so CourseIt needed retries plus a chain of backup models to stay reliable. A `Retry-After` header, or a documented way for the platform to route to a fallback model, would remove most of that code.
 - **Thinking mode is easy to miss.** Thinking was the difference between ~8 s and up to 100 s for lesson planning. The per-request switch (`chat_template_kwargs.enable_thinking`) deserves a prominent place in the docs and the playground for each model, with typical latencies.
-- **Structured outputs with a schema.** `json_object` guarantees JSON but not its shape, so every field still needs checking. Schema-enforced output (`json_schema`) for Nemotron would make that safer.
+- **Make `json_schema` the obvious default.** We started with `json_object`, which only promises JSON, and hit malformed answers until we switched to strict schemas. Featuring `json_schema` in the quickstart and model pages would save others that detour. (`guided_json`, which some OpenAI-compatible servers accept, is silently ignored, so it's easy to think a schema is in place when it isn't.)
 - **Thinking tokens and `max_tokens`.** Thinking counts towards `max_tokens`, so long answers can be cut off when thinking runs long. Separate limits, or a clear note in the docs, would help.
 
 ---

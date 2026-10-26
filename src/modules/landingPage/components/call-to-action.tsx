@@ -19,7 +19,7 @@ export default function CallToAction() {
             <h2 id="cta-title" className="text-h2">
               Your next course starts <em className="italic text-moss">today.</em>
             </h2>
-            <p className="text-ink-soft">Paste a link and get a plan in under a minute.</p>
+            <p className="text-ink-soft">Paste a video or playlist and start lesson 1 while the rest of the course builds.</p>
             <div className="mt-1.5">
               <CtaButtons />
             </div>

@@ -1,0 +1,5 @@
+export { InstagramIcon } from "./Instagram"
+export { YoutubeIcon } from "./Youtube"
+export { LinkedinIcon } from "./Linkedin"
+export { XIcon } from "./X"
+export {NvidiaIcon} from "./nvidia"

@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, ilike, ne, or } from "drizzle-orm";
+import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, questions, users, videos } from "@/db/schema";
 import { packDays } from "@/lib/pace";
@@ -49,6 +50,25 @@ export function getCommunityCourses(q = "") {
     .groupBy(courses.id, users.name)
     .orderBy(desc(learners), desc(courses.createdAt))
     .limit(60);
+}
+
+/**
+ * The most-taken ready courses, for "Popular courses" on the landing page and a new learner's Today.
+ * Cached for an hour, so the landing page stays fast and doesn't hit the database on every visit.
+ */
+export async function getPopularCourses(limit = 6) {
+  "use cache";
+  cacheLife("hours");
+  const learners = count(enrollments.userId);
+  return db
+    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds, addedBy: users.name, learners })
+    .from(courses)
+    .leftJoin(users, eq(users.id, courses.createdBy))
+    .leftJoin(enrollments, eq(enrollments.courseId, courses.id))
+    .where(eq(courses.status, "ready"))
+    .groupBy(courses.id, users.name)
+    .orderBy(desc(learners), desc(courses.createdAt))
+    .limit(limit);
 }
 
 export async function countCommunityCourses() {

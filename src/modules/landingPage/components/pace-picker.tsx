@@ -5,12 +5,12 @@ import { PACE_OPTIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export default function PacePicker() {
-  const [minutes, setMinutes] = useState(30);
-  const finishBy = PACE_OPTIONS.find((option) => option.minutes === minutes)?.finishBy;
+  const [minutes, setMinutes] = useState(90);
+  const days = PACE_OPTIONS.find((option) => option.minutes === minutes)?.days ?? 0;
 
   return (
     <div>
-      <div role="group" aria-label="Minutes per day" className="flex gap-1.5">
+      <div role="group" aria-label="Minutes per day" className="flex flex-wrap gap-1.5">
         {PACE_OPTIONS.map((option) => (
           <button
             key={option.minutes}
@@ -26,7 +26,9 @@ export default function PacePicker() {
           </button>
         ))}
       </div>
-      <p className="mt-[18px] font-display text-[2.4rem] leading-[1.05] tracking-[-0.02em] tabular-nums">Done by {finishBy}</p>
+      <p className="mt-[18px] font-display text-[2.4rem] leading-[1.05] tracking-[-0.02em] tabular-nums">
+        4h course · {days} days
+      </p>
     </div>
   );
 }

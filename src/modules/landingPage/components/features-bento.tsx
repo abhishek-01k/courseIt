@@ -1,4 +1,4 @@
-import { Check, Flame } from "lucide-react";
+import { Play, Share2, Users } from "lucide-react";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 import StatusBadge from "@/components/status-badge";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export default function FeaturesBento() {
   return (
     <section id="features" aria-labelledby="features-title" className="scroll-mt-24 px-6 py-[110px]">
       <div className="mx-auto max-w-[1200px]">
-        <SectionHeading id="features-title" label="Features" title="Everything you need to" accent="finish that 6-hour course." />
+        <SectionHeading id="features-title" label="Features" title="Everything you need to" accent="finish that 6-hour playlist." />
 
         <RevealGroup className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Tile
@@ -63,44 +63,89 @@ export default function FeaturesBento() {
             </ul>
           </Tile>
 
-          <Tile title="Watch it or read it." description="Every lesson works as the video or as short study notes.">
+          <Tile title="Watch it, then read it." description="Distraction-free video for each lesson, plus study notes Nemotron writes from what was said.">
             <FormatToggle />
           </Tile>
 
-          <Tile title="Quizzes for every section." description="Pass a quiz to count the day. A streak you can't fake.">
-            <div className="flex flex-col gap-3.5">
-              <div className="flex items-center gap-2.5">
-                <Flame className="size-6 text-warn-fg" />
-                <span className="font-display text-[1.8rem] tabular-nums">7</span>
-                <span className="text-[0.85rem] text-ink-soft">day streak</span>
-                <div className="ml-auto flex gap-[5px]">
-                  {Array.from({ length: 7 }, (_, day) => (
-                    <span key={day} className={cn("size-[11px] rounded-full", day < 6 ? "bg-peach" : "shadow-[inset_0_0_0_2px_var(--peach)]")} />
-                  ))}
-                </div>
-              </div>
+          <Tile title="Miss one, replay the moment." description="Every lesson ends with a quiz. A wrong answer jumps the video to the moment that explains it.">
+            <div className="flex flex-col gap-2.5 text-[0.88rem]">
+              <p className="font-medium">Why does the same prompt give different answers?</p>
+              <span className="rounded-xl bg-err-bg px-3 py-2 text-err-fg">The model forgets the prompt</span>
+              <span className="inline-flex h-9 items-center gap-1.5 self-start rounded-full bg-moss px-3.5 font-medium text-on-moss">
+                <Play aria-hidden="true" className="size-3 fill-current" />
+                Replay 3:12 that explains it
+              </span>
             </div>
           </Tile>
 
           <Tile
             className="lg:col-span-2"
-            title="Any YouTube video or playlist → a course in under a minute."
-            description="Lessons, quizzes and a daily plan, built for you."
+            title="Any YouTube video or whole playlist → a course."
+            description="Paste the link straight from YouTube. Lesson 1 is ready to watch while the rest is written."
           >
             <div className="flex items-center gap-2.5 rounded-xl bg-surface px-4 py-3.5 font-mono text-[0.88rem] shadow-[inset_0_0_0_1px_var(--line)]">
               <span className="text-moss">›</span>
-              <span className="min-w-0 flex-1 truncate">youtube.com/playlist?list=PLreact-from-zero</span>
+              <span className="min-w-0 flex-1 truncate">youtube.com/watch?v=7AMjmCTumuo&amp;list=PL-osiE80TeTs…</span>
             </div>
             <div className="mt-3.5 flex flex-wrap gap-2">
-              <span className={tag}>14 lessons</span>
-              <span className={tag}>48 concepts</span>
-              <span className={tag}>42 quiz questions</span>
-              <span className={tag}>6 days</span>
+              <span className={tag}>Playlists up to 20 hours</span>
+              <span className={tag}>Notes + quiz per lesson</span>
+              <span className={tag}>Day-by-day plan</span>
+              <span className={tag}>Placement test</span>
             </div>
           </Tile>
 
-          <Tile title="Learns your pace." description="15, 30 or 60 minutes a day, and a date to finish by.">
+          <Tile title="Your pace, every course." description="Set your daily time once. Every course splits into days, and skipped lessons drop out.">
             <PacePicker />
+          </Tile>
+
+          <Tile
+            className="lg:col-span-2"
+            title="Roadmaps: courses from many creators, in stages."
+            description="Build your own path, publish it to the Community, share the link. Others follow it and track their own progress."
+          >
+            <ol className="flex flex-wrap items-center gap-2" aria-label="Example roadmap stages">
+              {["Python", "Math for ML", "Machine learning", "Gen AI"].map((stage, i, all) => (
+                <li key={stage} className="inline-flex items-center gap-2">
+                  <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-[7px] text-[0.85rem] font-medium", i === 1 ? "bg-moss text-on-moss" : "bg-lime-soft text-pill-ink")}>
+                    <span className="tabular-nums opacity-70">{i + 1}</span>
+                    {stage}
+                  </span>
+                  {i < all.length - 1 && (
+                    <span aria-hidden="true" className="text-ink-soft">
+                      →
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+            <div className="mt-4 flex flex-wrap items-center gap-2.5 text-[0.88rem] text-ink-soft">
+              <span className="inline-flex items-center gap-1.5">
+                <Users aria-hidden="true" className="size-4" /> 1,240 learners following
+              </span>
+              <span className="ml-auto inline-flex h-10 items-center gap-1.5 rounded-full px-4 font-medium text-ink shadow-[inset_0_0_0_1px_var(--line)]">
+                <Share2 aria-hidden="true" className="size-4" /> Share
+              </span>
+              <span className="inline-flex h-10 items-center rounded-full bg-moss px-4 font-medium text-on-moss">Follow roadmap</span>
+            </div>
+          </Tile>
+
+          <Tile title="Notes pinned to the moment." description="Write while you watch. Each note keeps its time; click it and the video plays from there.">
+            <ul className="flex flex-col gap-2 text-[0.88rem]">
+              {[
+                ["0:42", "Attention looks back, never ahead."],
+                ["2:08", "MLP blocks hold most of the weights."],
+                ["5:01", "Sampling explains different answers."],
+              ].map(([time, text]) => (
+                <li key={time} className="flex items-center gap-2.5">
+                  <span className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 font-mono text-[0.78rem] font-medium text-moss tabular-nums shadow-[inset_0_0_0_1px_var(--line)]">
+                    <Play aria-hidden="true" className="size-3 fill-current" />
+                    {time}
+                  </span>
+                  <span className="truncate text-ink-soft">{text}</span>
+                </li>
+              ))}
+            </ul>
           </Tile>
         </RevealGroup>
       </div>

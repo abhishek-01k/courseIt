@@ -1,4 +1,4 @@
 export type PaceOption = {
   minutes: number;
-  finishBy: string;
+  days: number; // days to finish a 4-hour course at this pace
 };

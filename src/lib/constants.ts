@@ -6,7 +6,6 @@ import type { LandscapePalette, LandscapeScene } from "@/types/landscape";
 import type { AuthProvider } from "@/types/login";
 import type { NavLink } from "@/types/navbar";
 import type { PaceOption } from "@/types/pace-picker";
-import type { PopularCourse } from "@/types/popular-courses";
 import type { TourStep } from "@/types/product-preview";
 import type { Testimonial } from "@/types/testimonials";
 import type { TrustStat } from "@/types/trusted-by";
@@ -117,38 +116,41 @@ export const LANDSCAPE_PALETTES: Record<LandscapeScene, LandscapePalette> = {
 };
 
 export const TOUR_STEPS: TourStep[] = [
-  { id: 1, label: "Paste a link", progress: 100 },
+  { id: 1, label: "Paste a video or playlist", progress: 100 },
   { id: 2, label: "Skip what you know", progress: 55 },
-  { id: 3, label: "Learn the lesson", progress: 0 },
+  { id: 3, label: "Learn in focus mode", progress: 0 },
   { id: 4, label: "Replay what you missed", progress: 0 },
-  { id: 5, label: "Prove it", progress: 0 },
+  { id: 5, label: "Pin notes to moments", progress: 0 },
+  { id: 6, label: "Follow a roadmap", progress: 0 },
 ];
 
 export const LESSON_FORMATS: LessonFormat[] = ["Video", "Article"];
 
+// A 4-hour course at each daily time (same packing as the app: whole lessons per day).
 export const PACE_OPTIONS: PaceOption[] = [
-  { minutes: 15, finishBy: "Dec 4" },
-  { minutes: 30, finishBy: "Nov 21" },
-  { minutes: 60, finishBy: "Nov 7" },
+  { minutes: 30, days: 8 },
+  { minutes: 60, days: 4 },
+  { minutes: 90, days: 3 },
+  { minutes: 120, days: 2 },
 ];
 
 export const HOW_STEPS: HowStep[] = [
   {
     id: 1,
-    title: "Paste a link",
-    description: "Drop in any YouTube video or playlist. Nemotron maps every concept in under a minute.",
+    title: "Paste a video or playlist",
+    description: "Any YouTube video, or a playlist up to 20 hours. NVIDIA Nemotron plans the lessons and writes study notes and quizzes for each one.",
     numeralClass: "text-moss",
   },
   {
     id: 2,
     title: "Learn at your pace",
-    description: "A 2-minute placement test skips what you know. Pick 15, 30 or 60 minutes a day.",
+    description: "A 2-minute placement test skips what you know. Set 30 to 120 minutes a day and every course splits into days.",
     numeralClass: "text-[#82913a] dark:text-[#97a646]",
   },
   {
     id: 3,
-    title: "Prove it",
-    description: "Pass a short quiz to count the day. Miss one and CourseIt replays the exact moment that explains it.",
+    title: "Prove it, keep it",
+    description: "Miss a quiz question and the video jumps to the moment that explains it. Pin notes to any moment, and chain courses into a roadmap.",
     numeralClass: "text-lime dark:text-[#6f7e2c]",
   },
 ];
@@ -163,39 +165,30 @@ export const TRUST_STATS: TrustStat[] = [
 
 export const TOPICS = ["Python", "React", "DSA", "SQL", "System design", "Machine learning"];
 
-export const POPULAR_COURSES: PopularCourse[] = [
-  { id: 1, title: "React from zero", channel: "Code with Aria", meta: "14 lessons · 6h 02m · Beginner", length: "6:02:14", learners: "2,140", glyph: "</>", tone: "bg-[#e4e9c6] text-[#4b5e1e]", badge: "Popular" },
-  { id: 2, title: "Python for data analysis", channel: "Data Diaries", meta: "22 lessons · 9h 10m · Beginner", length: "9:10:05", learners: "1,870", glyph: "py", tone: "bg-[#ecedf3] text-[#445eb2]" },
-  { id: 3, title: "System design basics", channel: "Byte Sized Eng", meta: "9 lessons · 3h 45m · Intermediate", length: "3:45:30", learners: "1,320", glyph: "{ }", tone: "bg-[#f7e9da] text-[#9a5a22]", badge: "New" },
-  { id: 4, title: "SQL in one weekend", channel: "Query Club", meta: "8 lessons · 2h 20m · Beginner", length: "2:20:48", learners: "960", glyph: "SQL", tone: "bg-[#eef2da] text-[#3c4c16]" },
-  { id: 5, title: "DSA for interviews", channel: "LeetLoop", meta: "31 lessons · 14h 05m · Intermediate", length: "14:05:12", learners: "3,410", glyph: "O(n)", tone: "bg-[#e8e2ec] text-[#16315c]", badge: "Popular" },
-  { id: 6, title: "Machine learning intro", channel: "Model Minds", meta: "18 lessons · 7h 30m · Beginner", length: "7:30:40", learners: "1,150", glyph: "ML", tone: "bg-[#f6e1dd] text-[#a0473b]" },
-];
-
 export const TESTIMONIALS: Testimonial[] = [
   {
     id: 1,
     quote: "I had started that 6-hour React video four times. CourseIt cut it to two and a half hours and I finished in nine days.",
-    name: "Priya Nair",
-    role: "CS student, Pune",
-    initials: "PN",
-    finished: "Finished: React from zero · 9 days",
+    name: "Khushi Agrawal",
+    role: "Product Designer, India",
+    initials: "KA",
+    finished: "Finished: Python for AI · 3 days",
   },
   {
     id: 2,
     quote: "Getting a question wrong and landing on the exact 40 seconds that explain it is what made it stick.",
-    name: "Marcus Lee",
-    role: "Career switcher",
-    initials: "ML",
-    finished: "Finished: Python for data analysis · 14 days",
+    name: "Sankhya Siddesh",
+    role: "Developer Success",
+    initials: "SS",
+    finished: "Finished: Let's Reproduce GPT-2 · 4 days",
   },
   {
     id: 3,
     quote: "No recommendations, no rabbit holes. Thirty minutes a day and a date to finish by.",
-    name: "Aiko Tanaka",
-    role: "Frontend developer",
-    initials: "AT",
-    finished: "Finished: System design basics · 6 days",
+    name: "Nisarg Thakkar",
+    role: "Backend Developer",
+    initials: "NT",
+    finished: "Finished: System design basics · 3 days",
   },
 ];
 

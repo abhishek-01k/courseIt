@@ -4,8 +4,6 @@ import StatusBadge from "@/components/status-badge";
 import { TOUR_STEPS } from "@/lib/constants";
 import TiltFrame from "./tilt-frame";
 
-// ponytail: static tour screen; swap the body for the 45-second <video> once the tour is recorded.
-// Width is capped by the viewport height so the whole 16:9 screen fits on screen once it settles.
 export default function ProductPreview() {
   return (
     <section aria-label="Product tour" className="relative z-20 -mt-[230px] px-6">
@@ -38,7 +36,7 @@ export default function ProductPreview() {
           <div className="flex flex-col gap-2 rounded-card bg-surface p-7 shadow-[0_0_0_1px_var(--line)]">
             <span className="font-display text-[1.6rem] text-ink-soft tabular-nums line-through opacity-60">6h 02m</span>
             <span className="font-display text-[clamp(4rem,8vw,6.4rem)] leading-[0.9] tracking-[-0.045em] text-moss tabular-nums">2h 40m</span>
-            <span className="mt-1.5 text-[0.95rem] text-ink-soft">6 days at 30 minutes a day</span>
+            <span className="mt-1.5 text-[0.95rem] text-ink-soft">2 days at 90 minutes a day</span>
           </div>
         </div>
 

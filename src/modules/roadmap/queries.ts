@@ -30,10 +30,12 @@ async function summarize<T extends Summary>(list: T[], userId?: string) {
   const [stages, items, follows] = await Promise.all([
     db.select({ roadmapId: roadmapStages.roadmapId, name: roadmapStages.name }).from(roadmapStages).where(inArray(roadmapStages.roadmapId, ids)).orderBy(asc(roadmapStages.position)),
     db
-      .select({ roadmapId: roadmapCourses.roadmapId, courseId: courses.id, channel: courses.channel, durationSeconds: courses.durationSeconds })
+      .select({ roadmapId: roadmapCourses.roadmapId, courseId: courses.id, channel: courses.channel, durationSeconds: courses.durationSeconds, thumbnail: courses.thumbnail })
       .from(roadmapCourses)
       .innerJoin(courses, eq(courses.id, roadmapCourses.courseId))
-      .where(inArray(roadmapCourses.roadmapId, ids)),
+      .innerJoin(roadmapStages, eq(roadmapStages.id, roadmapCourses.stageId))
+      .where(inArray(roadmapCourses.roadmapId, ids))
+      .orderBy(asc(roadmapStages.position), asc(roadmapCourses.position)), // roadmap order, for the cover
     db.select({ roadmapId: roadmapFollows.roadmapId, n: count() }).from(roadmapFollows).where(inArray(roadmapFollows.roadmapId, ids)).groupBy(roadmapFollows.roadmapId),
   ]);
   const progress = userId ? await getCourseProgress(userId, [...new Set(items.map((i) => i.courseId))]) : new Map();
@@ -45,6 +47,7 @@ async function summarize<T extends Summary>(list: T[], userId?: string) {
     return {
       ...r,
       stages: stages.filter((s) => s.roadmapId === r.id).map((s) => s.name),
+      covers: mine.flatMap((i) => (i.thumbnail ? [i.thumbnail] : [])).slice(0, 4), // the card's cover: its first courses
       courseCount: mine.length,
       seconds: mine.reduce((t, i) => t + i.durationSeconds, 0),
       creators: [...new Set(mine.map((i) => i.channel))],
@@ -74,7 +77,8 @@ export async function getMyRoadmaps(userId: string) {
 export type RoadmapSummary = Awaited<ReturnType<typeof getMyRoadmaps>>["mine"][number];
 
 // ponytail: newest 60 matching the search; paging when Community has more roadmaps than fit.
-export async function getPublishedRoadmaps(q = "") {
+/** Published roadmaps; `viewerId` gets their own progress on each card. */
+export async function getPublishedRoadmaps(q = "", viewerId?: string) {
   const match = q ? or(ilike(roadmaps.title, `%${q}%`), ilike(roadmaps.description, `%${q}%`), ilike(users.name, `%${q}%`)) : undefined;
   const list = await db
     .select(summaryColumns)
@@ -83,7 +87,7 @@ export async function getPublishedRoadmaps(q = "") {
     .where(and(eq(roadmaps.published, true), match))
     .orderBy(desc(roadmaps.updatedAt))
     .limit(60);
-  return summarize(list);
+  return summarize(list, viewerId);
 }
 
 export async function countPublishedRoadmaps() {

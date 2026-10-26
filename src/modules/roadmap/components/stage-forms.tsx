@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import Modal from "@/components/modal";
 import { Button } from "@/components/ui/button";
 import { addCourseLinkAction, addStageAction, moveStageAction, removeCourseAction, removeStageAction, type RoadmapFormState, renameStageAction } from "../actions";
 
@@ -85,65 +86,88 @@ export function AddStageForm({ roadmapId, next }: { roadmapId: string; next: num
   );
 }
 
-/**
- * Move, rename or remove a stage (owner only). Removing takes its courses off the roadmap, not out of
- * My courses.
- */
-export function StageControls({ stageId, name, first, last }: { stageId: string; name: string; first: boolean; last: boolean }) {
-  const [mode, setMode] = useState<"idle" | "rename" | "remove">("idle");
+/** ↑ ↓ beside a stage (owner only): swaps it with the stage above or below. */
+export function StageMove({ stageId, name, first, last }: { stageId: string; name: string; first: boolean; last: boolean }) {
   const [moving, startMove] = useTransition();
-  const [removing, startRemove] = useTransition();
-  const [state, action, pending] = useActionState<RoadmapFormState, FormData>(async (prev, data) => {
-    const result = await renameStageAction(stageId, prev, data);
-    if (result.ok) setMode("idle");
-    return result;
-  }, {});
-
-  if (mode === "rename") {
-    return (
-      <form action={action} className="flex w-full flex-wrap items-center gap-2">
-        <label htmlFor={`rename-${stageId}`} className="sr-only">
-          Stage name
-        </label>
-        <input id={`rename-${stageId}`} name="name" defaultValue={name} required maxLength={60} autoFocus className={`${field} flex-[1_1_200px]`} />
-        <Button type="submit" className="h-11 px-4" disabled={pending}>
-          Save
-        </Button>
-        <Button type="button" variant="ghost" className="h-11 px-4" onClick={() => setMode("idle")}>
-          Cancel
-        </Button>
-        {state.error && <p className="w-full text-[0.85rem] text-warn-fg">{state.error}</p>}
-      </form>
-    );
-  }
-  if (mode === "remove") {
-    return (
-      <span className="inline-flex flex-wrap items-center gap-2 text-[0.88rem]">
-        Remove “{name}”?
-        <Button type="button" variant="destructive" className="h-10 px-3.5" disabled={removing} onClick={() => startRemove(() => removeStageAction(stageId))}>
-          Remove
-        </Button>
-        <Button type="button" variant="ghost" className="h-10 px-3.5" onClick={() => setMode("idle")}>
-          Keep
-        </Button>
-      </span>
-    );
-  }
-  const icon = "size-10 rounded-full";
+  const icon = "size-10 rounded-full text-ink-soft";
   return (
-    <span className="inline-flex gap-1" aria-busy={moving}>
+    <div className="flex shrink-0 flex-col items-center gap-1 pt-4" aria-busy={moving}>
       <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} up`} disabled={first || moving} onClick={() => startMove(() => moveStageAction(stageId, "up"))}>
         <ArrowUp aria-hidden="true" className="size-4" />
       </Button>
       <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} down`} disabled={last || moving} onClick={() => startMove(() => moveStageAction(stageId, "down"))}>
         <ArrowDown aria-hidden="true" className="size-4" />
       </Button>
-      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Rename ${name}`} onClick={() => setMode("rename")}>
+    </div>
+  );
+}
+
+/**
+ * Rename or remove a stage (owner only), each in a centered dialog. Removing takes its courses off the
+ * roadmap, not out of My courses.
+ */
+export function StageControls({ stageId, name, courseCount }: { stageId: string; name: string; courseCount: number }) {
+  const [open, setOpen] = useState<"rename" | "remove" | null>(null);
+  const [removing, startRemove] = useTransition();
+  const [state, action, pending] = useActionState<RoadmapFormState, FormData>(async (prev, data) => {
+    const result = await renameStageAction(stageId, prev, data);
+    if (result.ok) setOpen(null);
+    return result;
+  }, {});
+  const close = (o: boolean) => !o && setOpen(null);
+
+  return (
+    <span className="inline-flex gap-1">
+      <Button type="button" variant="ghost" size="icon" className="size-10 rounded-full" aria-label={`Rename ${name}`} onClick={() => setOpen("rename")}>
         <Pencil aria-hidden="true" className="size-4" />
       </Button>
-      <Button type="button" variant="ghost" size="icon" className="size-10 rounded-full" aria-label={`Remove ${name}`} onClick={() => setMode("remove")}>
+      <Button type="button" variant="ghost" size="icon" className="size-10 rounded-full" aria-label={`Remove ${name}`} onClick={() => setOpen("remove")}>
         <Trash2 aria-hidden="true" className="size-4" />
       </Button>
+
+      <Modal open={open === "rename"} onOpenChange={close} title="Rename stage">
+        <form action={action} className="flex flex-col gap-3">
+          <label htmlFor={`rename-${stageId}`} className="text-[0.85rem] text-ink-soft">
+            Stage name
+          </label>
+          <input id={`rename-${stageId}`} name="name" defaultValue={name} required maxLength={60} autoFocus className={field} />
+          {state.error && (
+            <p role="alert" className="text-[0.85rem] text-warn-fg">
+              {state.error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" size="lg" variant="outline" onClick={() => setOpen(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" size="lg" disabled={pending}>
+              {pending && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
+              Save
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={open === "remove"}
+        onOpenChange={close}
+        title={`Remove “${name}”?`}
+        description={
+          courseCount
+            ? `Its ${courseCount} ${courseCount === 1 ? "course comes" : "courses come"} off this roadmap. They stay in My courses, with all your progress.`
+            : "This stage has no courses."
+        }
+      >
+        <div className="flex justify-end gap-2">
+          <Button type="button" size="lg" variant="outline" onClick={() => setOpen(null)}>
+            Keep it
+          </Button>
+          <Button type="button" size="lg" variant="destructive" disabled={removing} onClick={() => startRemove(() => removeStageAction(stageId))}>
+            {removing && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
+            Remove stage
+          </Button>
+        </div>
+      </Modal>
     </span>
   );
 }

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import CourseTile from "@/components/course-tile";
 import EmptyState from "@/components/empty-state";
 import { buttonVariants } from "@/components/ui/button";
+import { auth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { countCommunityCourses, getCommunityCourses } from "@/modules/course/queries";
 import RoadmapCard from "@/modules/roadmap/components/roadmap-card";
@@ -14,7 +15,8 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const read = async (searchParams: Search) => {
   const { tab, q } = await searchParams;
-  return { tab: (tab === "roadmaps" ? "roadmaps" : "courses") as Tab, q: (typeof q === "string" ? q : "").trim().slice(0, 80) };
+  // Roadmaps open first; ?tab=courses shows courses.
+  return { tab: (tab === "courses" ? "courses" : "roadmaps") as Tab, q: (typeof q === "string" ? q : "").trim().slice(0, 80) };
 };
 
 const href = (tab: Tab, q: string) => `/community?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
@@ -22,8 +24,8 @@ const href = (tab: Tab, q: string) => `/community?tab=${tab}${q ? `&q=${encodeUR
 async function Tabs({ searchParams }: { searchParams: Search }) {
   const [{ tab, q }, courses, roadmaps] = await Promise.all([read(searchParams), countCommunityCourses(), countPublishedRoadmaps()]);
   const tabs = [
-    { id: "courses" as const, label: "Courses", n: courses },
     { id: "roadmaps" as const, label: "Roadmaps", n: roadmaps },
+    { id: "courses" as const, label: "Courses", n: courses },
   ];
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -56,9 +58,6 @@ async function Tabs({ searchParams }: { searchParams: Search }) {
           className="min-w-0 flex-1 bg-transparent text-ink outline-none"
         />
       </form>
-      <span className="text-[0.88rem] text-ink-soft">
-        Sort: <span className="font-medium text-ink">{tab === "courses" ? "Most learners" : "Recently updated"}</span>
-      </span>
     </div>
   );
 }
@@ -67,7 +66,8 @@ async function Results({ searchParams }: { searchParams: Search }) {
   const { tab, q } = await read(searchParams);
 
   if (tab === "roadmaps") {
-    const roadmaps = await getPublishedRoadmaps(q);
+    const session = await auth();
+    const roadmaps = await getPublishedRoadmaps(q, session?.user?.id);
     if (!roadmaps.length) {
       return (
         <EmptyState icon={MapIcon} title={q ? "No roadmaps match" : "No public roadmaps yet"} text={q ? `Nothing for “${q}”. Try another word.` : "Make a roadmap from courses you like and publish it. It shows up here for everyone."}>
@@ -78,7 +78,7 @@ async function Results({ searchParams }: { searchParams: Search }) {
       );
     }
     return (
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(340px,100%),1fr))] gap-[18px]">
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-[18px]">
         {roadmaps.map((r) => (
           <li key={r.id} className="flex">
             <RoadmapCard roadmap={r} variant="community" />
@@ -111,7 +111,6 @@ async function Results({ searchParams }: { searchParams: Search }) {
 
 const box = <div aria-hidden="true" className="h-64 rounded-card bg-surface shadow-[0_0_0_1px_var(--line)]" />;
 
-// Storyboard frame 9: every course anyone built and every published roadmap.
 export default function CommunityPage({ searchParams }: { searchParams: Search }) {
   return (
     <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-[22px] px-4 pt-8 pb-20 sm:px-6">

@@ -18,6 +18,7 @@ import {
   AddStageForm,
   RemoveCourseButton,
   StageControls,
+  StageMove,
 } from "./components/stage-forms";
 import { getRoadmap, type RoadmapView } from "./queries";
 
@@ -153,10 +154,14 @@ export default async function RoadmapPage({
           {roadmap.stages.map((stage, i) => {
             const state = states[i];
             return (
+              <div key={stage.id} className="flex items-start gap-2">
+              {/* Reorder handles sit beside the stage, not inside it. */}
+              {roadmap.isOwner && roadmap.stages.length > 1 && (
+                <StageMove stageId={stage.id} name={stage.name} first={i === 0} last={i === roadmap.stages.length - 1} />
+              )}
               <article
-                key={stage.id}
                 className={cn(
-                  "flex flex-col gap-3.5 rounded-card bg-surface px-[22px] py-5",
+                  "flex min-w-0 flex-1 flex-col gap-3.5 rounded-card bg-surface px-[22px] py-5",
                   state === "now"
                     ? "shadow-[0_0_0_2px_var(--moss)]"
                     : "shadow-[0_0_0_1px_var(--line)]",
@@ -193,12 +198,7 @@ export default async function RoadmapPage({
                     </StatusBadge>
                   )}
                   {roadmap.isOwner && (
-                    <StageControls
-                      stageId={stage.id}
-                      name={stage.name}
-                      first={i === 0}
-                      last={i === roadmap.stages.length - 1}
-                    />
+                    <StageControls stageId={stage.id} name={stage.name} courseCount={stage.courses.length} />
                   )}
                 </div>
 
@@ -271,6 +271,7 @@ export default async function RoadmapPage({
                   <AddCourseForm stageId={stage.id} stageName={stage.name} />
                 )}
               </article>
+              </div>
             );
           })}
           {roadmap.isOwner && (

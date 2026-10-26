@@ -5,15 +5,14 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { createRoadmapAction, type RoadmapFormState } from "../actions";
 
-// Name the roadmap; the next screen is the roadmap itself, with a first stage ready for a link.
 export default function NewRoadmapForm() {
   const [state, action, pending] = useActionState<RoadmapFormState, FormData>(createRoadmapAction, {});
   return (
     <form action={action} className="flex flex-col gap-3 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:px-[22px]">
-      <h2 className="text-h3 font-medium">New roadmap</h2>
+      <h2 className="text-h3 font-medium">Let&apos;s create a roadmap for you</h2>
       <div className="flex flex-wrap gap-2.5">
         <label className="flex min-w-0 flex-[1_1_320px] flex-col gap-1.5">
-          <span className="text-[0.85rem] text-ink-soft">What do you want to become or learn?</span>
+          <span className="text-[0.85rem] text-ink-soft">Keep it private or share with the community</span>
           <input
             name="title"
             required
@@ -30,12 +29,10 @@ export default function NewRoadmapForm() {
           Create roadmap
         </Button>
       </div>
-      {state.error ? (
+      {state.error && (
         <p id="new-roadmap-error" role="alert" className="text-[0.88rem] text-warn-fg">
           {state.error}
         </p>
-      ) : (
-        <p className="text-[0.85rem] text-ink-soft">Next you add stages, then paste YouTube links into each stage.</p>
       )}
     </form>
   );

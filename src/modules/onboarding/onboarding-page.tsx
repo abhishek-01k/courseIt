@@ -1,5 +1,5 @@
 import { ArrowLeft, Loader2 } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
@@ -122,7 +122,7 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
       <main className="mx-auto flex w-full max-w-[1120px] flex-wrap gap-6 px-4 pt-10 pb-16 sm:px-6">
         <section className="flex min-w-0 flex-[999_1_560px] flex-col gap-5">
           <div className="flex flex-wrap items-center gap-5">
-            {course.thumbnail && <Image src={course.thumbnail} alt="" width={150} height={84} className="aspect-video w-[150px] rounded-2xl object-cover" />}
+            <Thumbnail src={course.thumbnail} width={150} height={84} className="aspect-video w-[150px] rounded-2xl object-cover" />
             <div className="flex min-w-0 flex-[1_1_260px] flex-col items-start gap-2.5">
               <Pill>
                 Step 1 of 2 · <span className="max-w-[28ch] truncate">{course.title}</span> · {course.channel}

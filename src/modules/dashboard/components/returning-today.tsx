@@ -1,5 +1,5 @@
 import { Flame, Play } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import Landscape from "@/components/landscape";
 import StatusBadge from "@/components/status-badge";
@@ -167,15 +167,7 @@ export default function ReturningToday({
                   className="flex w-full flex-col rounded-card bg-surface p-2.5 shadow-[0_0_0_1px_var(--line)] transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_30px_60px_-30px_rgba(22,49,92,0.45),0_0_0_1px_var(--line)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-lime-soft">
-                    {c.thumbnail && (
-                      <Image
-                        src={c.thumbnail}
-                        alt=""
-                        fill
-                        sizes="(min-width: 768px) 360px, 100vw"
-                        className="object-cover"
-                      />
-                    )}
+                    <Thumbnail src={c.thumbnail} fill sizes="(min-width: 768px) 360px, 100vw" className="object-cover" />
                     <StatusBadge
                       tone={
                         finished ? "ok" : c.status === "ready" ? "warn" : "idle"

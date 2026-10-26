@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import Modal from "@/components/modal";
+import { act } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { addCourseLinkAction, addStageAction, moveStageAction, removeCourseAction, removeStageAction, type RoadmapFormState, renameStageAction } from "../actions";
 
@@ -19,7 +20,10 @@ function useResetOnOk(ok: boolean | undefined) {
 
 /** Paste a YouTube link into a stage: built courses are added at once, new ones start building. */
 export function AddCourseForm({ stageId, stageName }: { stageId: string; stageName: string }) {
-  const [state, action, pending] = useActionState<RoadmapFormState, FormData>((prev, data) => addCourseLinkAction(stageId, prev, data), {});
+  const [state, action, pending] = useActionState<RoadmapFormState, FormData>(
+    async (prev, data) => (await act(() => addCourseLinkAction(stageId, prev, data), "Couldn't add that course.")) ?? prev,
+    {},
+  );
   const ref = useResetOnOk(state.ok);
   const id = `add-${stageId}`;
   return (
@@ -42,8 +46,8 @@ export function AddCourseForm({ stageId, stageName }: { stageId: string; stageNa
           {pending ? "Adding…" : "Add course"}
         </Button>
       </div>
-      <p aria-live="polite" className={state.error ? "text-[0.85rem] text-warn-fg" : "sr-only"}>
-        {state.error ?? (state.ok ? "Course added." : "")}
+      <p aria-live="polite" className="sr-only">
+        {state.ok ? "Course added." : ""}
       </p>
     </form>
   );
@@ -51,8 +55,8 @@ export function AddCourseForm({ stageId, stageName }: { stageId: string; stageNa
 
 export function AddStageForm({ roadmapId, next }: { roadmapId: string; next: number }) {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState<RoadmapFormState, FormData>(async (prev, data) => {
-    const result = await addStageAction(roadmapId, prev, data);
+  const [, action, pending] = useActionState<RoadmapFormState, FormData>(async (prev, data) => {
+    const result = (await act(() => addStageAction(roadmapId, prev, data), "Couldn't add the stage.")) ?? prev;
     if (result.ok) setOpen(false);
     return result;
   }, {});
@@ -77,11 +81,6 @@ export function AddStageForm({ roadmapId, next }: { roadmapId: string; next: num
       <Button type="button" size="lg" variant="ghost" onClick={() => setOpen(false)}>
         Cancel
       </Button>
-      {state.error && (
-        <p role="alert" className="w-full text-[0.85rem] text-warn-fg">
-          {state.error}
-        </p>
-      )}
     </form>
   );
 }
@@ -92,10 +91,10 @@ export function StageMove({ stageId, name, first, last }: { stageId: string; nam
   const icon = "size-10 rounded-full text-ink-soft";
   return (
     <div className="flex shrink-0 flex-col items-center gap-1 pt-4" aria-busy={moving}>
-      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} up`} disabled={first || moving} onClick={() => startMove(() => moveStageAction(stageId, "up"))}>
+      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} up`} disabled={first || moving} onClick={() => startMove(async () => void (await act(() => moveStageAction(stageId, "up"), "Couldn't move the stage.")))}>
         <ArrowUp aria-hidden="true" className="size-4" />
       </Button>
-      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} down`} disabled={last || moving} onClick={() => startMove(() => moveStageAction(stageId, "down"))}>
+      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} down`} disabled={last || moving} onClick={() => startMove(async () => void (await act(() => moveStageAction(stageId, "down"), "Couldn't move the stage.")))}>
         <ArrowDown aria-hidden="true" className="size-4" />
       </Button>
     </div>
@@ -109,8 +108,8 @@ export function StageMove({ stageId, name, first, last }: { stageId: string; nam
 export function StageControls({ stageId, name, courseCount }: { stageId: string; name: string; courseCount: number }) {
   const [open, setOpen] = useState<"rename" | "remove" | null>(null);
   const [removing, startRemove] = useTransition();
-  const [state, action, pending] = useActionState<RoadmapFormState, FormData>(async (prev, data) => {
-    const result = await renameStageAction(stageId, prev, data);
+  const [, action, pending] = useActionState<RoadmapFormState, FormData>(async (prev, data) => {
+    const result = (await act(() => renameStageAction(stageId, prev, data), "Couldn't rename the stage.")) ?? prev;
     if (result.ok) setOpen(null);
     return result;
   }, {});
@@ -131,11 +130,6 @@ export function StageControls({ stageId, name, courseCount }: { stageId: string;
             Stage name
           </label>
           <input id={`rename-${stageId}`} name="name" defaultValue={name} required maxLength={60} autoFocus className={field} />
-          {state.error && (
-            <p role="alert" className="text-[0.85rem] text-warn-fg">
-              {state.error}
-            </p>
-          )}
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" size="lg" variant="outline" onClick={() => setOpen(null)}>
               Cancel
@@ -162,7 +156,7 @@ export function StageControls({ stageId, name, courseCount }: { stageId: string;
           <Button type="button" size="lg" variant="outline" onClick={() => setOpen(null)}>
             Keep it
           </Button>
-          <Button type="button" size="lg" variant="destructive" disabled={removing} onClick={() => startRemove(() => removeStageAction(stageId))}>
+          <Button type="button" size="lg" variant="destructive" disabled={removing} onClick={() => startRemove(async () => void (await act(() => removeStageAction(stageId), "Couldn't remove the stage.")))}>
             {removing && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
             Remove stage
           </Button>
@@ -182,7 +176,7 @@ export function RemoveCourseButton({ roadmapId, courseId, title }: { roadmapId: 
       className="size-10 shrink-0 rounded-full text-ink-soft"
       aria-label={`Remove ${title} from this roadmap`}
       disabled={pending}
-      onClick={() => start(() => removeCourseAction(roadmapId, courseId))}
+      onClick={() => start(async () => void (await act(() => removeCourseAction(roadmapId, courseId), "Couldn't remove the course.")))}
     >
       {pending ? <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" /> : <X aria-hidden="true" className="size-4" />}
     </Button>

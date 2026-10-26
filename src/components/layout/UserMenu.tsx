@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Crown, LogOut, Settings } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import {
@@ -31,13 +31,17 @@ export default function UserMenu({ name, image, plan }: UserMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger aria-label={`Account: ${name}`} className="group flex w-full items-center gap-2.5 rounded-[18px] bg-surface px-3 py-2.5 group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0 text-left shadow-[0_0_0_1px_var(--line)] transition-colors outline-none hover:bg-lime-soft/50 focus-visible:ring-2 focus-visible:ring-dusk data-popup-open:bg-lime-soft/50">
-        {image ? (
-          <Image src={image} alt="" width={36} height={36} className="size-9 shrink-0 rounded-full" />
-        ) : (
-          <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-lime-soft font-display text-[0.9rem] text-pill-ink">
-            {initials}
-          </span>
-        )}
+        <Thumbnail
+          src={image}
+          width={36}
+          height={36}
+          className="size-9 shrink-0 rounded-full"
+          fallback={
+            <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-lime-soft font-display text-[0.9rem] text-pill-ink">
+              {initials}
+            </span>
+          }
+        />
         <span className="min-w-0 flex-1 group-data-[collapsed=true]/side:hidden">
           <span className="block truncate text-[0.9rem] font-medium">{name}</span>
           <span className="block text-[0.78rem] text-ink-soft">{plan}</span>

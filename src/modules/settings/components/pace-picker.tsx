@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { act } from "@/components/toaster";
 import { cn } from "@/lib/utils";
 import { setDailyMinutesAction } from "../actions";
 
@@ -38,8 +39,7 @@ export default function PacePicker({ minutesPerDay }: { minutesPerDay: number })
         e.preventDefault();
         if (!changed) return;
         start(async () => {
-          await setDailyMinutesAction(minutes);
-          setSaved(true);
+          if ((await act(() => setDailyMinutesAction(minutes), "Couldn't save your daily time.")) !== null) setSaved(true);
         });
       }}
     >

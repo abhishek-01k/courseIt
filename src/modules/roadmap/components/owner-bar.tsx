@@ -3,21 +3,21 @@
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
 import Modal from "@/components/modal";
+import { act } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
-import { deleteRoadmapAction, type RoadmapFormState, setPublishedAction, updateRoadmapAction } from "../actions";
+import { deleteRoadmapAction, type RoadmapFormState, updateRoadmapAction } from "../actions";
 
-type Props = { id: string; title: string; description: string; published: boolean };
+type Props = { id: string; title: string; description: string };
 
 const field = "rounded-[14px] bg-paper px-3.5 text-ink shadow-[inset_0_0_0_1px_var(--line)] outline-none focus-visible:ring-2 focus-visible:ring-dusk";
 
-// The owner's buttons on a roadmap: Edit (name, description; a centered dialog), Delete (asks first) and
-// Publish / Make private.
-export default function OwnerBar({ id, title, description, published }: Props) {
+// The owner's buttons on a roadmap: Edit (name, description; a centered dialog) and Delete (asks first).
+// Roadmaps are private; sharing the link lets others enroll. Only admins publish to Community.
+export default function OwnerBar({ id, title, description }: Props) {
   const [open, setOpen] = useState<"edit" | "delete" | null>(null);
-  const [publishing, startPublish] = useTransition();
   const [deleting, startDelete] = useTransition();
-  const [state, action, saving] = useActionState<RoadmapFormState, FormData>(async (prev, formData) => {
-    const next = await updateRoadmapAction(id, prev, formData);
+  const [, action, saving] = useActionState<RoadmapFormState, FormData>(async (prev, formData) => {
+    const next = (await act(() => updateRoadmapAction(id, prev, formData), "Couldn't save the roadmap.")) ?? prev;
     if (next.ok) setOpen(null);
     return next;
   }, {});
@@ -28,10 +28,6 @@ export default function OwnerBar({ id, title, description, published }: Props) {
       <Button type="button" size="lg" variant="outline" onClick={() => setOpen("edit")}>
         <Pencil aria-hidden="true" />
         Edit
-      </Button>
-      <Button type="button" size="lg" disabled={publishing} onClick={() => startPublish(() => setPublishedAction(id, !published))}>
-        {publishing && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
-        {published ? "Make private" : "Publish to Community"}
       </Button>
 
       <Modal open={open === "edit"} onOpenChange={close} title="Edit roadmap">
@@ -44,11 +40,6 @@ export default function OwnerBar({ id, title, description, published }: Props) {
             <span className="text-[0.85rem] text-ink-soft">What it’s for (optional)</span>
             <textarea name="description" defaultValue={description} maxLength={400} rows={3} className={`${field} py-2.5`} />
           </label>
-          {state.error && (
-            <p role="alert" className="text-[0.88rem] text-warn-fg">
-              {state.error}
-            </p>
-          )}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button type="button" size="lg" variant="ghost" className="text-warn-fg" onClick={() => setOpen("delete")}>
               <Trash2 aria-hidden="true" />
@@ -71,13 +62,13 @@ export default function OwnerBar({ id, title, description, published }: Props) {
         open={open === "delete"}
         onOpenChange={close}
         title={`Delete “${title}”?`}
-        description="The roadmap and its stages are deleted for you and anyone following it. Its courses stay in My courses, with all your progress. This can’t be undone."
+        description="The roadmap and its stages are deleted. Its courses stay in My courses, with all your progress. A roadmap others are enrolled in can’t be deleted. This can’t be undone."
       >
         <div className="flex justify-end gap-2">
           <Button type="button" size="lg" variant="outline" onClick={() => setOpen(null)}>
             Keep it
           </Button>
-          <Button type="button" size="lg" variant="destructive" disabled={deleting} onClick={() => startDelete(() => deleteRoadmapAction(id))}>
+          <Button type="button" size="lg" variant="destructive" disabled={deleting} onClick={() => startDelete(async () => void (await act(() => deleteRoadmapAction(id), "Couldn't delete the roadmap.")))}>
             {deleting && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
             Delete roadmap
           </Button>

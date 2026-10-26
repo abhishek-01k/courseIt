@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Play } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
@@ -26,7 +26,7 @@ export default async function CourseNotesPage({ params }: { params: Promise<{ sl
 
       <header className="flex flex-wrap items-center gap-[18px]">
         <span className="relative aspect-video w-[120px] shrink-0 overflow-hidden rounded-[14px] bg-lime-soft">
-          {course.thumbnail && <Image src={course.thumbnail} alt="" fill sizes="120px" className="object-cover" />}
+          <Thumbnail src={course.thumbnail} fill sizes="120px" className="object-cover" />
         </span>
         <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-1.5">
           <span className="font-mono text-label tracking-[0.07em] text-ink-soft uppercase tabular-nums">

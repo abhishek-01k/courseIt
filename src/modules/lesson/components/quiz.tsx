@@ -3,6 +3,7 @@
 import { Check, RotateCcw, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { act } from "@/components/toaster";
 import { cn } from "@/lib/utils";
 import type { QuizQuestion } from "@/types/lesson";
 import { saveAnswerAction } from "../actions";
@@ -27,7 +28,7 @@ export default function Quiz({ lessonStart, questions, initialAnswers, onReplay,
     const after = { ...picked, [questionId]: index };
     setPicked(after);
     if (questions.every((q) => q.id in after)) onComplete?.();
-    startSaving(() => saveAnswerAction(questionId, index, Intl.DateTimeFormat().resolvedOptions().timeZone));
+    startSaving(async () => void (await act(() => saveAnswerAction(questionId, index, Intl.DateTimeFormat().resolvedOptions().timeZone), "Couldn't save your answer.")));
   };
   const retry = (questionId: string) =>
     setPicked((p) => {

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Pill from "@/components/pill";
 import { formatDuration } from "@/lib/utils";
 import type { getCourseBySlug } from "../queries";
@@ -10,7 +10,7 @@ export default function CourseHeader({ course, lessonCount, menu }: { course: Co
   return (
     <header className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-5">
-        {course.thumbnail && <Image src={course.thumbnail} alt="" width={160} height={90} className="aspect-video w-40 rounded-2xl object-cover" />}
+        <Thumbnail src={course.thumbnail} width={160} height={90} className="aspect-video w-40 rounded-2xl object-cover" />
         <div className="flex min-w-0 flex-[1_1_260px] flex-col items-start gap-2.5">
           <Pill>
             {course.channel} · {formatDuration(course.durationSeconds)}

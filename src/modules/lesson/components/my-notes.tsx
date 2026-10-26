@@ -2,6 +2,7 @@
 
 import { Clock, Loader2, Pencil, Play, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { act } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { cn, formatClock } from "@/lib/utils";
 import { addNoteAction, deleteNoteAction, type Note, updateNoteAction } from "../actions";
@@ -37,9 +38,9 @@ export default function MyNotes({ lessonId, start, notes, setNotes, now, jump }:
     setBody("");
     setAt(null);
     startAdd(async () => {
-      const saved = await addNoteAction(lessonId, seconds, text);
+      const saved = await act(() => addNoteAction(lessonId, seconds, text), "Couldn't save your note.");
       setNotes((list) => (saved ? list.map((n) => (n.id === temp.id ? saved : n)).sort(byTime) : list.filter((n) => n.id !== temp.id)));
-      setStatus(saved ? `Note added at ${formatClock(saved.seconds - start)}` : "That note didn’t save. Try again.");
+      setStatus(saved ? `Note added at ${formatClock(saved.seconds - start)}` : "");
       if (!saved) setBody(text);
     });
   };
@@ -120,12 +121,18 @@ function NoteRow({ note, start, jump, setNotes }: { note: Note; start: number; j
     setEditing(false);
     if (text === note.body) return;
     setNotes((list) => (text ? list.map((n) => (n.id === note.id ? { ...n, body: text } : n)) : list.filter((n) => n.id !== note.id)));
-    startSave(() => updateNoteAction(note.id, text));
+    startSave(async () => {
+      if ((await act(() => updateNoteAction(note.id, text), "Couldn't save your note.")) === null) restore();
+    });
   };
   const remove = () => {
     setNotes((list) => list.filter((n) => n.id !== note.id));
-    startSave(() => deleteNoteAction(note.id));
+    startSave(async () => {
+      if ((await act(() => deleteNoteAction(note.id), "Couldn't delete your note.")) === null) restore();
+    });
   };
+  // A failed save puts the note back as it was.
+  const restore = () => setNotes((list) => [...list.filter((n) => n.id !== note.id), note].sort(byTime));
   const edit = () => {
     setDraft(note.body);
     setEditing(true);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Play } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { cn, formatDuration } from "@/lib/utils";
@@ -82,7 +82,7 @@ export default function Playlist({ slug, courseTitle, plan, currentId }: { slug:
                 {isCurrent ? <Play aria-hidden="true" className="mx-auto size-3 fill-moss text-moss" /> : l.position + 1}
               </span>
               <span className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-lime-soft">
-                {l.thumbnail && <Image src={l.thumbnail} alt="" fill sizes="96px" className="object-cover" />}
+                <Thumbnail src={l.thumbnail} fill sizes="96px" className="object-cover" />
                 <span className="absolute right-0.5 bottom-0.5 rounded bg-black/75 px-1 text-[10px] text-white tabular-nums">{formatDuration(l.endSeconds - l.startSeconds)}</span>
                 {l.done && (
                   <span className="absolute inset-0 grid place-items-center bg-black/35">

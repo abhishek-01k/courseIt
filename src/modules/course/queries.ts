@@ -6,9 +6,7 @@ import { packDays } from "@/lib/pace";
 
 export async function getCourseBySlug(slug: string) {
   const [course] = await db.select().from(courses).where(eq(courses.slug, slug));
-  if (!course) return null;
-  const [{ videoCount }] = await db.select({ videoCount: count() }).from(courseVideos).where(eq(courseVideos.courseId, course.id));
-  return { ...course, slug, videoCount };
+  return course ?? null;
 }
 
 export function getEnrolledCourses(userId: string, limit?: number) {

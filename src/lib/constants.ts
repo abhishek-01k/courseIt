@@ -8,7 +8,6 @@ import type { NavLink } from "@/types/navbar";
 import type { PaceOption } from "@/types/pace-picker";
 import type { TourStep } from "@/types/product-preview";
 import type { Testimonial } from "@/types/testimonials";
-import type { TrustStat } from "@/types/trusted-by";
 
 // PLACEHOLDERS: fill these in before launch. They appear on the Privacy and Terms pages.
 export const LEGAL = {
@@ -44,11 +43,39 @@ export const AUTH_PROVIDERS: AuthProvider[] = [
   },
 ];
 
+// Footer columns. Contact is a mailto, so it needs no page.
+export const FOOTER_COLUMNS: { title: string; links: NavLink[] }[] = [
+  {
+    title: "Product",
+    links: [
+      { id: 1, title: "Features", href: "/#features" },
+      { id: 2, title: "Courses", href: "/#courses" },
+      { id: 3, title: "How it works", href: "/#how-it-works" },
+      { id: 4, title: "Community", href: "/community" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { id: 1, title: "About", href: "/about" },
+      { id: 2, title: "Contact us", href: `mailto:${LEGAL.contactEmail}` },
+    ],
+  },
+  { title: "Legal", links: LEGAL_LINKS },
+];
+
+// PLACEHOLDERS: put the real profile URLs here.
+export const SOCIAL_LINKS = [
+  { label: "Instagram", href: "#" },
+  { label: "YouTube", href: "#" },
+  { label: "LinkedIn", href: "#" },
+  { label: "X", href: "#" },
+] as const;
+
 export const NAV_LINKS: NavLink[] = [
   { id: 1, title: "Features", href: "/#features" },
   { id: 2, title: "Courses", href: "/#courses" },
   { id: 3, title: "How it works", href: "/#how-it-works" },
-  { id: 4, title: "Stories", href: "/#stories" },
 ];
 
 // Signed-in sidebar. Each href also needs a matcher entry in src/proxy.ts.
@@ -154,16 +181,6 @@ export const HOW_STEPS: HowStep[] = [
     numeralClass: "text-lime dark:text-[#6f7e2c]",
   },
 ];
-
-// DUMMY sample data for the design. Replace with real numbers, courses and quotes before launch.
-export const TRUST_STATS: TrustStat[] = [
-  { id: 1, label: "Learners", value: "48,000+" },
-  { id: 2, label: "Courses built", value: "9,200+" },
-  { id: 3, label: "Completion rate", value: "64%" },
-  { id: 4, label: "Avg. streak", value: "11 days" },
-];
-
-export const TOPICS = ["Python", "React", "DSA", "SQL", "System design", "Machine learning"];
 
 export const TESTIMONIALS: Testimonial[] = [
   {

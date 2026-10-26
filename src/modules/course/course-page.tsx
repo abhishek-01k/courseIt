@@ -33,7 +33,6 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   // Opening a course doesn't enroll you (Enroll, a lesson or the placement test does); it only bumps Recents.
   if (userId) after(() => touchEnrollment(userId, id));
 
-  console.log("course",course);
   const building = course.status !== "ready" && course.status !== "failed";
 
   return (
@@ -54,7 +53,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       {building && <BuildStatus steps={steps} now={new Date()} />}
 
       {userId && course.status === "failed" && (
-        <RetryBanner courseId={course.id} message="Something went wrong while building this course. Retry picks up where it stopped." />
+        <RetryBanner courseId={course.id} message="This course stopped building partway, usually because the AI was busy. Retry picks up where it stopped." />
       )}
       {userId && course.status === "ready" && course.error && (
         <RetryBanner courseId={course.id} message={`${course.error} The rest of the course is ready to use.`} />

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { ArrowLeft, Loader2, LogIn } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ShareButton from "@/components/share-button";
@@ -11,7 +11,7 @@ import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { coursePath, loginPath, roadmapPath } from "@/lib/paths";
 import { cn, formatDuration } from "@/lib/utils";
-import FollowButton from "./components/follow-button";
+import EnrollButton from "./components/enroll-button";
 import OwnerBar from "./components/owner-bar";
 import {
   AddCourseForm,
@@ -62,7 +62,7 @@ export default async function RoadmapPage({
       : [undefined],
   ]);
   if (!roadmap) notFound();
-  const studying = roadmap.isOwner || roadmap.isFollowing; // has their own progress on it
+  const studying = roadmap.isOwner || roadmap.isEnrolled; // has their own progress on it
 
   const firstOpen = roadmap.stages.findIndex((s) => !finished(s));
   // Progress badges only make sense for someone studying it; visitors see the stages plainly.
@@ -104,7 +104,7 @@ export default async function RoadmapPage({
             </span>
             {roadmap.isOwner && (
               <StatusBadge tone={roadmap.published ? "ok" : "idle"}>
-                {roadmap.published ? "Public · in Community" : "Private"}
+                {roadmap.published ? "In Community" : "Private"}
               </StatusBadge>
             )}
           </div>
@@ -116,23 +116,18 @@ export default async function RoadmapPage({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          {roadmap.published && (
-            <ShareButton
-              path={roadmapPath(roadmap.slug)}
-              title={roadmap.title}
-            />
-          )}
+          {/* Private roadmaps are shared by link: whoever opens it can enroll. */}
+          <ShareButton path={roadmapPath(roadmap.slug)} title={roadmap.title} />
           {roadmap.isOwner ? (
             <OwnerBar
               id={roadmap.id}
               title={roadmap.title}
               description={roadmap.description}
-              published={roadmap.published}
             />
           ) : userId ? (
-            <FollowButton
+            <EnrollButton
               roadmapId={roadmap.id}
-              following={roadmap.isFollowing}
+              enrolled={roadmap.isEnrolled}
             />
           ) : (
             <Link
@@ -140,7 +135,7 @@ export default async function RoadmapPage({
               className={buttonVariants({ size: "lg" })}
             >
               <LogIn aria-hidden="true" />
-              Sign in to follow
+              Sign in to enroll
             </Link>
           )}
         </div>
@@ -214,15 +209,7 @@ export default async function RoadmapPage({
                           className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] p-2 hover:bg-lime-soft/40"
                         >
                           <span className="relative aspect-[16/10] w-16 shrink-0 overflow-hidden rounded-[10px] bg-lime-soft">
-                            {c.thumbnail && (
-                              <Image
-                                src={c.thumbnail}
-                                alt=""
-                                fill
-                                sizes="64px"
-                                className="object-cover"
-                              />
-                            )}
+                            <Thumbnail src={c.thumbnail} fill sizes="64px" className="object-cover" />
                           </span>
                           <span className="flex min-w-0 flex-1 flex-col">
                             <span className="truncate font-medium">
@@ -341,23 +328,21 @@ export default async function RoadmapPage({
                       key={f.id}
                       className="flex items-center gap-2.5 text-[0.92rem]"
                     >
-                      {f.image ? (
-                        <Image
-                          src={f.image}
-                          alt=""
-                          width={28}
-                          height={28}
-                          referrerPolicy="no-referrer"
-                          className="size-7 shrink-0 rounded-full"
-                        />
-                      ) : (
-                        <span
-                          aria-hidden="true"
-                          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-lime-soft font-display text-[0.7rem] text-pill-ink"
-                        >
-                          {initials(f.name)}
-                        </span>
-                      )}
+                      <Thumbnail
+                        src={f.image}
+                        width={28}
+                        height={28}
+                        referrerPolicy="no-referrer"
+                        className="size-7 shrink-0 rounded-full"
+                        fallback={
+                          <span
+                            aria-hidden="true"
+                            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-lime-soft font-display text-[0.7rem] text-pill-ink"
+                          >
+                            {initials(f.name)}
+                          </span>
+                        }
+                      />
                       <span className="truncate">{f.name ?? "A learner"}</span>
                     </li>
                   ))}
@@ -374,8 +359,8 @@ export default async function RoadmapPage({
               ) : (
                 <p className="text-[0.92rem] text-ink-soft">
                   {roadmap.isOwner
-                    ? "No one yet. Share it and followers show up here."
-                    : "No one yet. Be the first to follow it."}
+                    ? "No one yet. Share the link and learners who enroll show up here."
+                    : "No one yet. Be the first to enroll."}
                 </p>
               )}
             </section>

@@ -1,5 +1,5 @@
 import { NotebookPen, Search } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -53,7 +53,7 @@ async function CourseTiles({ searchParams }: { searchParams: Search }) {
                   className="flex w-full flex-col gap-3 rounded-card bg-surface p-2.5 shadow-[0_0_0_1px_var(--line)] transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_30px_60px_-30px_rgba(22,49,92,0.45),0_0_0_1px_var(--line)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                 >
                   <span className="relative aspect-video overflow-hidden rounded-2xl bg-lime-soft">
-                    {c.thumbnail && <Image src={c.thumbnail} alt="" fill sizes="(min-width: 768px) 360px, 100vw" className="object-cover" />}
+                    <Thumbnail src={c.thumbnail} fill sizes="(min-width: 768px) 360px, 100vw" className="object-cover" />
                   </span>
                   <span className="flex flex-col gap-1.5 px-2 pb-2">
                     <span className="line-clamp-2 text-h3 font-medium">{c.title}</span>

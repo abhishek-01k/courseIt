@@ -1,5 +1,5 @@
 import { Map as MapIcon } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import StatusBadge from "@/components/status-badge";
 import { roadmapPath } from "@/lib/paths";
@@ -22,7 +22,7 @@ function Cover({ covers }: { covers: string[] }) {
     <span className={cn("grid h-full gap-0.5 bg-line", covers.length >= 2 && "grid-cols-2", covers.length >= 3 && "grid-rows-2")}>
       {covers.map((src, i) => (
         <span key={src + i} className={cn("relative overflow-hidden bg-lime-soft", covers.length === 3 && i === 0 && "row-span-2")}>
-          <Image src={src} alt="" fill sizes="(min-width: 768px) 180px, 50vw" className="object-cover" />
+          <Thumbnail src={src} fill sizes="(min-width: 768px) 180px, 50vw" className="object-cover" />
         </span>
       ))}
     </span>
@@ -41,7 +41,7 @@ export default function RoadmapCard({ roadmap: r, variant }: { roadmap: Summary;
         <Cover covers={r.covers} />
         {variant === "mine" && (
           <StatusBadge tone={r.published ? "ok" : "idle"} className="absolute top-3 left-3 shadow-sm">
-            {r.published ? "Public · in Community" : "Private"}
+            {r.published ? "In Community" : "Private"}
           </StatusBadge>
         )}
       </span>

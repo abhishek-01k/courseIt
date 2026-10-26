@@ -2,19 +2,23 @@
 
 import { Check, Loader2, Plus } from "lucide-react";
 import { useState, useTransition } from "react";
+import { act } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
-import { followRoadmapAction } from "../actions";
+import { enrollRoadmapAction } from "../actions";
 
-// Follow a published roadmap: it joins your Roadmaps under "Following". Following → hover/focus says Unfollow.
-export default function FollowButton({ roadmapId, following }: { roadmapId: string; following: boolean }) {
+// Enroll in a shared or Community roadmap: it joins your Roadmaps under "Enrolled". Enrolled → hover/focus says Leave.
+export default function EnrollButton({ roadmapId, enrolled }: { roadmapId: string; enrolled: boolean }) {
   const [pending, start] = useTransition();
   const [hover, setHover] = useState(false);
-  const toggle = () => start(() => followRoadmapAction(roadmapId, !following));
-  if (!following) {
+  const toggle = () =>
+    start(async () => {
+      await act(() => enrollRoadmapAction(roadmapId, !enrolled), enrolled ? "Couldn't leave the roadmap." : "Couldn't enroll you in this roadmap.");
+    });
+  if (!enrolled) {
     return (
       <Button type="button" size="lg" disabled={pending} onClick={toggle}>
         {pending ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <Plus aria-hidden="true" />}
-        Follow roadmap
+        Enroll in roadmap
       </Button>
     );
   }
@@ -29,10 +33,10 @@ export default function FollowButton({ roadmapId, following }: { roadmapId: stri
       onPointerLeave={() => setHover(false)}
       onFocus={() => setHover(true)}
       onBlur={() => setHover(false)}
-      aria-label="Following. Unfollow this roadmap"
+      aria-label="Enrolled. Leave this roadmap"
     >
       {pending ? <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : <Check aria-hidden="true" />}
-      {hover ? "Unfollow" : "Following"}
+      {hover ? "Leave roadmap" : "Enrolled"}
     </Button>
   );
 }

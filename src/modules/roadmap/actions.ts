@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, max } from "drizzle-orm";
+import { and, asc, count, eq, max } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
@@ -35,6 +35,7 @@ async function ownedStage(userId: string, stageId: string) {
 
 const touch = (roadmapId: string) => db.update(roadmaps).set({ updatedAt: new Date() }).where(eq(roadmaps.id, roadmapId));
 const clean = (value: FormDataEntryValue | null, maxLength: number) => String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+const NOT_YOURS = { error: "You can only edit your own roadmaps." };
 
 export async function createRoadmapAction(_prev: RoadmapFormState, formData: FormData): Promise<RoadmapFormState> {
   const userId = await me();
@@ -49,7 +50,7 @@ export async function createRoadmapAction(_prev: RoadmapFormState, formData: For
 
 export async function updateRoadmapAction(roadmapId: string, _prev: RoadmapFormState, formData: FormData): Promise<RoadmapFormState> {
   const userId = await me();
-  if (!(await owned(userId, roadmapId))) return { error: "You can only edit your own roadmaps." };
+  if (!(await owned(userId, roadmapId))) return NOT_YOURS;
   const title = clean(formData.get("title"), 80);
   if (title.length < 3) return { error: "The name needs at least 3 characters." };
   const description = String(formData.get("description") ?? "").trim().slice(0, 400);
@@ -58,23 +59,19 @@ export async function updateRoadmapAction(roadmapId: string, _prev: RoadmapFormS
   return { ok: true };
 }
 
-export async function setPublishedAction(roadmapId: string, published: boolean) {
+export async function deleteRoadmapAction(roadmapId: string): Promise<RoadmapFormState> {
   const userId = await me();
-  if (!(await owned(userId, roadmapId))) return;
-  await db.update(roadmaps).set({ published, updatedAt: new Date() }).where(eq(roadmaps.id, roadmapId));
-  refresh();
-}
-
-export async function deleteRoadmapAction(roadmapId: string) {
-  const userId = await me();
-  if (!(await owned(userId, roadmapId))) return;
+  if (!(await owned(userId, roadmapId))) return NOT_YOURS;
+  // Learners enrolled in it study the creator's roadmap itself, so it stays while anyone is enrolled.
+  const [{ enrolled }] = await db.select({ enrolled: count() }).from(roadmapFollows).where(eq(roadmapFollows.roadmapId, roadmapId));
+  if (enrolled) return { error: `${enrolled} ${enrolled === 1 ? "learner is" : "learners are"} enrolled in this roadmap, so it can't be deleted.` };
   await db.delete(roadmaps).where(eq(roadmaps.id, roadmapId)); // stages and their course links cascade; courses stay
   redirect("/roadmaps");
 }
 
 export async function addStageAction(roadmapId: string, _prev: RoadmapFormState, formData: FormData): Promise<RoadmapFormState> {
   const userId = await me();
-  if (!(await owned(userId, roadmapId))) return { error: "You can only edit your own roadmaps." };
+  if (!(await owned(userId, roadmapId))) return NOT_YOURS;
   const name = clean(formData.get("name"), 60);
   if (!name) return { error: "Name the stage, like “Python” or “Math for ML”." };
   const [{ last }] = await db.select({ last: max(roadmapStages.position) }).from(roadmapStages).where(eq(roadmapStages.roadmapId, roadmapId));
@@ -86,7 +83,7 @@ export async function addStageAction(roadmapId: string, _prev: RoadmapFormState,
 export async function renameStageAction(stageId: string, _prev: RoadmapFormState, formData: FormData): Promise<RoadmapFormState> {
   const userId = await me();
   const stage = await ownedStage(userId, stageId);
-  if (!stage) return { error: "You can only edit your own roadmaps." };
+  if (!stage) return NOT_YOURS;
   const name = clean(formData.get("name"), 60);
   if (!name) return { error: "A stage needs a name." };
   await db.batch([db.update(roadmapStages).set({ name }).where(eq(roadmapStages.id, stageId)), touch(stage.roadmapId)]);
@@ -97,7 +94,7 @@ export async function renameStageAction(stageId: string, _prev: RoadmapFormState
 export async function removeStageAction(stageId: string) {
   const userId = await me();
   const stage = await ownedStage(userId, stageId);
-  if (!stage) return;
+  if (!stage) return NOT_YOURS;
   await db.batch([db.delete(roadmapStages).where(eq(roadmapStages.id, stageId)), touch(stage.roadmapId)]); // its course links cascade
   refresh();
 }
@@ -106,7 +103,7 @@ export async function removeStageAction(stageId: string) {
 export async function moveStageAction(stageId: string, direction: "up" | "down") {
   const userId = await me();
   const stage = await ownedStage(userId, stageId);
-  if (!stage) return;
+  if (!stage) return NOT_YOURS;
   const stages = await db.select({ id: roadmapStages.id, position: roadmapStages.position }).from(roadmapStages).where(eq(roadmapStages.roadmapId, stage.roadmapId)).orderBy(asc(roadmapStages.position));
   const i = stages.findIndex((s) => s.id === stageId);
   const j = direction === "up" ? i - 1 : i + 1;
@@ -118,13 +115,16 @@ export async function moveStageAction(stageId: string, direction: "up" | "down")
   refresh();
 }
 
-/** Follow someone else's published roadmap: it joins your Roadmaps under "Following" and stays in sync. */
-export async function followRoadmapAction(roadmapId: string, follow: boolean) {
+/**
+ * Enroll in a roadmap someone shared (or one from Community): the creator's roadmap itself joins your
+ * Roadmaps under "Enrolled", read-only and in sync with their changes. Enrollments live in roadmap_follow.
+ */
+export async function enrollRoadmapAction(roadmapId: string, enroll: boolean) {
   const userId = await me();
-  const [roadmap] = await db.select({ ownerId: roadmaps.ownerId, published: roadmaps.published }).from(roadmaps).where(eq(roadmaps.id, roadmapId));
-  if (!roadmap || roadmap.ownerId === userId) return;
-  if (follow) {
-    if (!roadmap.published) return;
+  const [roadmap] = await db.select({ ownerId: roadmaps.ownerId }).from(roadmaps).where(eq(roadmaps.id, roadmapId));
+  if (!roadmap) return { error: "That roadmap was deleted." };
+  if (roadmap.ownerId === userId) return;
+  if (enroll) {
     await db.insert(roadmapFollows).values({ userId, roadmapId }).onConflictDoNothing();
   } else {
     await db.delete(roadmapFollows).where(and(eq(roadmapFollows.userId, userId), eq(roadmapFollows.roadmapId, roadmapId)));
@@ -149,7 +149,7 @@ async function place(roadmapId: string, stageId: string, courseId: string) {
 export async function addCourseLinkAction(stageId: string, _prev: RoadmapFormState, formData: FormData): Promise<RoadmapFormState> {
   const userId = await me();
   const stage = await ownedStage(userId, stageId);
-  if (!stage) return { error: "You can only edit your own roadmaps." };
+  if (!stage) return NOT_YOURS;
   const result = await startCourse(userId, String(formData.get("url") ?? ""));
   if ("error" in result) return result;
   await place(stage.roadmapId, stageId, result.course.id);
@@ -162,14 +162,15 @@ export async function addCourseToStageAction(stageId: string, courseId: string) 
   const userId = await me();
   const stage = await ownedStage(userId, stageId);
   const [course] = await db.select({ id: courses.id }).from(courses).where(eq(courses.id, courseId));
-  if (!stage || !course) return;
+  if (!stage) return NOT_YOURS;
+  if (!course) return { error: "That course no longer exists." };
   await place(stage.roadmapId, stageId, course.id);
   refresh();
 }
 
 export async function removeCourseAction(roadmapId: string, courseId: string) {
   const userId = await me();
-  if (!(await owned(userId, roadmapId))) return;
+  if (!(await owned(userId, roadmapId))) return NOT_YOURS;
   await db.batch([db.delete(roadmapCourses).where(and(eq(roadmapCourses.roadmapId, roadmapId), eq(roadmapCourses.courseId, courseId))), touch(roadmapId)]);
   refresh();
 }

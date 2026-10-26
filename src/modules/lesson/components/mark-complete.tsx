@@ -3,6 +3,7 @@
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { act } from "@/components/toaster";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { markLessonDoneAction } from "../actions";
@@ -27,7 +28,7 @@ export default function MarkComplete({ lessonId, done, nextHref, courseHref }: {
       disabled={pending}
       onClick={() =>
         start(async () => {
-          await markLessonDoneAction(lessonId);
+          if ((await act(() => markLessonDoneAction(lessonId), "Couldn't mark the lesson as completed.")) === null) return;
           router.push(nextHref ?? courseHref);
         })
       }

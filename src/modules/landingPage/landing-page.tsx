@@ -5,7 +5,6 @@ import HowItWorks from "./components/how-it-works";
 import PopularCourses from "./components/popular-courses";
 import ProductPreview from "./components/product-preview";
 import Testimonials from "./components/testimonials";
-import TrustedBy from "./components/trusted-by";
 
 export default function LandingPage() {
   return (
@@ -15,7 +14,6 @@ export default function LandingPage() {
       <FeaturesBento />
       <PopularCourses />
       <HowItWorks />
-      <TrustedBy />
       <Testimonials />
       <CallToAction />
     </>

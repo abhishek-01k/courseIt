@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import StatusBadge from "@/components/status-badge";
 import { coursePath } from "@/lib/paths";
@@ -21,15 +21,7 @@ export default function CourseTile({ course }: { course: CourseTileData }) {
       className="flex w-full flex-col gap-3 rounded-card bg-surface p-2.5 shadow-[0_0_0_1px_var(--line)] transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_30px_60px_-30px_rgba(22,49,92,0.45),0_0_0_1px_var(--line)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <div className="relative aspect-video overflow-hidden rounded-2xl bg-lime-soft">
-        {course.thumbnail && (
-          <Image
-            src={course.thumbnail}
-            alt=""
-            fill
-            sizes="(min-width: 768px) 360px, 100vw"
-            className="object-cover"
-          />
-        )}
+        <Thumbnail src={course.thumbnail} fill sizes="(min-width: 768px) 360px, 100vw" className="object-cover" />
         {course.status !== "ready" && (
           <StatusBadge tone={tone} className="absolute top-3 left-3">
             {label}

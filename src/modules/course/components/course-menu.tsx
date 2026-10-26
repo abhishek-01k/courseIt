@@ -5,6 +5,7 @@ import { Check, ChevronDown, Loader2, LogIn, Map as MapIcon, MoreVertical, Plus,
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { sharePage } from "@/components/share-button";
+import { act } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { coursePath, loginPath } from "@/lib/paths";
@@ -56,7 +57,7 @@ export default function CourseMenu({ slug, courseId, courseTitle, signedIn, enro
                 className={item}
                 onClick={() =>
                   start(async () => {
-                    await enrollAction(courseId);
+                    if ((await act(() => enrollAction(courseId), "Couldn't enroll you in this course.")) === null) return;
                     setNote("Enrolled · it’s in My courses");
                     setTimeout(() => setNote(""), 3000);
                   })
@@ -173,7 +174,7 @@ function RoadmapRow({ roadmap: r, courseId }: { roadmap: RoadmapChoice; courseId
           ) : (
             <span className="text-[0.85rem] text-ink-soft">into {stage?.name}</span>
           )}
-          <Button type="button" className="h-10 px-4" disabled={pending || !stageId} onClick={() => start(() => addCourseToStageAction(stageId, courseId))}>
+          <Button type="button" className="h-10 px-4" disabled={pending || !stageId} onClick={() => start(async () => void (await act(() => addCourseToStageAction(stageId, courseId), "Couldn't add the course to that roadmap.")))}>
             {pending && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
             Add
           </Button>

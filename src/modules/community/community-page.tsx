@@ -70,7 +70,7 @@ async function Results({ searchParams }: { searchParams: Search }) {
     const roadmaps = await getPublishedRoadmaps(q, session?.user?.id);
     if (!roadmaps.length) {
       return (
-        <EmptyState icon={MapIcon} title={q ? "No roadmaps match" : "No public roadmaps yet"} text={q ? `Nothing for “${q}”. Try another word.` : "Make a roadmap from courses you like and publish it. It shows up here for everyone."}>
+        <EmptyState icon={MapIcon} title={q ? "No roadmaps match" : "No public roadmaps yet"} text={q ? `Nothing for “${q}”. Try another word.` : "Curated roadmaps show up here soon. Until then, make your own and share its link."}>
           <Link href="/roadmaps" className={buttonVariants({ size: "lg" })}>
             Make a roadmap
           </Link>

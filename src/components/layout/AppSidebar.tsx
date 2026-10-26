@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import Image from "next/image";
+import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { Suspense } from "react";
 import { buttonVariants } from "@/components/ui/button";
@@ -50,7 +50,7 @@ async function SidebarRecents() {
             className={cn(navLink, "gap-2.5 px-2.5 text-[0.9rem] group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0")}
           >
             <span className="relative size-7 shrink-0 overflow-hidden rounded-lg bg-lime-soft">
-              {course.thumbnail && <Image src={course.thumbnail} alt="" fill sizes="28px" className="object-cover" />}
+              <Thumbnail src={course.thumbnail} fill sizes="28px" className="object-cover" />
             </span>
             <span className="min-w-0 flex-1 truncate group-data-[collapsed=true]/side:sr-only">{course.title}</span>
             <span className="font-mono text-[0.68rem] text-ink-soft tabular-nums group-data-[collapsed=true]/side:hidden">{progress.get(course.id)?.pct ?? 0}%</span>

@@ -102,7 +102,7 @@ export default function FeaturesBento() {
           <Tile
             className="lg:col-span-2"
             title="Roadmaps: courses from many creators, in stages."
-            description="Build your own path, publish it to the Community, share the link. Others follow it and track their own progress."
+            description="Build your own path and share the link. Anyone with it can enroll and track their own progress."
           >
             <ol className="flex flex-wrap items-center gap-2" aria-label="Example roadmap stages">
               {["Python", "Math for ML", "Machine learning", "Gen AI"].map((stage, i, all) => (
@@ -121,12 +121,12 @@ export default function FeaturesBento() {
             </ol>
             <div className="mt-4 flex flex-wrap items-center gap-2.5 text-[0.88rem] text-ink-soft">
               <span className="inline-flex items-center gap-1.5">
-                <Users aria-hidden="true" className="size-4" /> 1,240 learners following
+                <Users aria-hidden="true" className="size-4" /> 1,240 learners enrolled
               </span>
               <span className="ml-auto inline-flex h-10 items-center gap-1.5 rounded-full px-4 font-medium text-ink shadow-[inset_0_0_0_1px_var(--line)]">
                 <Share2 aria-hidden="true" className="size-4" /> Share
               </span>
-              <span className="inline-flex h-10 items-center rounded-full bg-moss px-4 font-medium text-on-moss">Follow roadmap</span>
+              <span className="inline-flex h-10 items-center rounded-full bg-moss px-4 font-medium text-on-moss">Enroll in roadmap</span>
             </div>
           </Tile>
 

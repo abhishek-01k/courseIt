@@ -30,7 +30,7 @@ async function Mine() {
           </ul>
         ) : (
           <p className="text-ink-soft">
-            No roadmaps yet. Name one above, or follow one from Community.
+            No roadmaps yet. Name one above, or enroll in one from Community.
           </p>
         )}
       </section>
@@ -39,15 +39,13 @@ async function Mine() {
           aria-labelledby="following-title"
           className="flex flex-col gap-3.5"
         >
-          <h2
-            id="following-title"
-            className="flex items-baseline gap-2 text-[1.6rem]"
-          >
-            Following{" "}
-            <span className="text-[1rem] text-ink-soft tabular-nums">
+          <div className="flex items-center gap-2 text-[1.6rem]">
+            <p id="mine-title"> Enrolled </p>
+            <p className="rounded-full bg-surface px-2 py-0.5 font-mono text-[0.72rem] text-ink-soft tabular-nums shadow-[inset_0_0_0_1px_var(--line)] group-data-[collapsed=true]/side:hidden">
               {following.length}
-            </span>
-          </h2>
+            </p>
+          </div>
+
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-[18px]">
             {following.map((r) => (
               <li key={r.id} className="flex">

@@ -42,10 +42,9 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
     .select({ built: count() })
     .from(courses)
     .where(and(eq(courses.createdBy, userId), gte(courses.createdAt, since)));
- 
-    // if (built >= COURSE_LIMITS.newCoursesPerDay) {
-  //   return { error: `You can build ${COURSE_LIMITS.newCoursesPerDay} new courses a day. Popular courses are always open.` };
-  // }
+  if (built >= COURSE_LIMITS.newCoursesPerDay) {
+    return { error: `You can build ${COURSE_LIMITS.newCoursesPerDay} new courses a day. Courses already in Community are always open.` };
+  }
 
   let found;
   try {

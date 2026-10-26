@@ -1,6 +1,7 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
+import { act } from "@/components/toaster";
 import { cn } from "@/lib/utils";
 import { setSkipAction } from "../actions";
 
@@ -18,7 +19,7 @@ export default function SkipSwitch({ courseId, lessonId, title, skipped }: { cou
       onClick={() =>
         start(async () => {
           setOptimistic(!isSkipped);
-          await setSkipAction(courseId, lessonId, !isSkipped);
+          await act(() => setSkipAction(courseId, lessonId, !isSkipped), "Couldn't update your plan."); // the switch flips back by itself
         })
       }
       className={cn("relative h-6 w-10 shrink-0 rounded-full transition-colors", inPlan ? "bg-moss" : "bg-ink/15")}

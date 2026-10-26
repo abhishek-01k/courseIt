@@ -94,7 +94,7 @@ export default function UpNext({ ready, quizDone, next, day, courseHref, autopla
     <div role="status" aria-live="polite" className="relative flex size-full items-center justify-center overflow-hidden bg-[#0f1611] p-6 text-white">
       {next?.thumbnail && (
         // eslint-disable-next-line @next/next/no-img-element -- decorative, heavily dimmed backdrop
-        <img src={next.thumbnail} alt="" className="absolute inset-0 size-full scale-110 object-cover opacity-25 blur-md" />
+        <img src={next.thumbnail} alt="" onError={(e) => (e.currentTarget.hidden = true)} className="absolute inset-0 size-full scale-110 object-cover opacity-25 blur-md" />
       )}
       <div className="relative flex max-w-[520px] flex-col items-center gap-4 text-center">
         {!next ? (

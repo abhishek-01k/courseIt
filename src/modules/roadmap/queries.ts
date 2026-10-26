@@ -59,7 +59,7 @@ async function summarize<T extends Summary>(list: T[], userId?: string) {
 
 const summaryColumns = { id: roadmaps.id, slug: roadmaps.slug, title: roadmaps.title, published: roadmaps.published, updatedAt: roadmaps.updatedAt, author: users.name };
 
-/** Roadmaps you made, and published roadmaps you follow (they stay in sync with their creator's changes). */
+/** Roadmaps you made, and roadmaps you enrolled in (they stay in sync with their creator's changes). */
 export async function getMyRoadmaps(userId: string) {
   const [mine, following] = await Promise.all([
     db.select(summaryColumns).from(roadmaps).innerJoin(users, eq(users.id, roadmaps.ownerId)).where(eq(roadmaps.ownerId, userId)).orderBy(desc(roadmaps.updatedAt)),
@@ -68,7 +68,7 @@ export async function getMyRoadmaps(userId: string) {
       .from(roadmapFollows)
       .innerJoin(roadmaps, eq(roadmaps.id, roadmapFollows.roadmapId))
       .innerJoin(users, eq(users.id, roadmaps.ownerId))
-      .where(and(eq(roadmapFollows.userId, userId), eq(roadmaps.published, true)))
+      .where(eq(roadmapFollows.userId, userId))
       .orderBy(desc(roadmapFollows.createdAt)),
   ]);
   const [a, b] = await Promise.all([summarize(mine, userId), summarize(following, userId)]);
@@ -96,8 +96,8 @@ export async function countPublishedRoadmaps() {
 }
 
 /**
- * One roadmap with its stages and courses, for the owner or (once published) anyone, signed in or not.
- * Progress is the viewer's own.
+ * One roadmap with its stages and courses. Anyone with the link can open it, signed in or not (that's how
+ * roadmaps are shared); only Community lists published ones. Progress is the viewer's own.
  */
 export async function getRoadmap(slug: string, viewerId: string | null) {
   const [roadmap] = await db
@@ -105,7 +105,7 @@ export async function getRoadmap(slug: string, viewerId: string | null) {
     .from(roadmaps)
     .innerJoin(users, eq(users.id, roadmaps.ownerId))
     .where(eq(roadmaps.slug, slug));
-  if (!roadmap || (!roadmap.published && roadmap.ownerId !== viewerId)) return null;
+  if (!roadmap) return null;
 
   const [stages, items, [{ followerCount }], followers, [following]] = await Promise.all([
     db.select().from(roadmapStages).where(eq(roadmapStages.roadmapId, roadmap.id)).orderBy(asc(roadmapStages.position)),
@@ -134,7 +134,7 @@ export async function getRoadmap(slug: string, viewerId: string | null) {
   return {
     ...roadmap,
     isOwner: roadmap.ownerId === viewerId,
-    isFollowing: Boolean(following),
+    isEnrolled: Boolean(following),
     followerCount,
     followers,
     stages: stages.map((s) => ({ ...s, courses: withPct.filter((i) => i.stageId === s.id) })),

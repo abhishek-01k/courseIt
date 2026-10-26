@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import Pill from "@/components/pill";
+import { act } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { submitPlacementAction } from "../actions";
@@ -75,7 +76,7 @@ export default function PlacementQuiz({ courseId, questions }: { courseId: strin
             </Button>
           )}
           {last ? (
-            <Button size="lg" disabled={choice === undefined || pending} onClick={() => start(() => submitPlacementAction(courseId, answers))}>
+            <Button size="lg" disabled={choice === undefined || pending} onClick={() => start(async () => void (await act(() => submitPlacementAction(courseId, answers), "Couldn't submit your test.")))}>
               {pending && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
               See my result
             </Button>

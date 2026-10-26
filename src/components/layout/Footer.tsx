@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/constants";
+import { FOOTER_COLUMNS, LEGAL, SOCIAL_LINKS } from "@/lib/constants";
 import { LogoMark } from "./Logo";
 import { InstagramIcon, LinkedinIcon, XIcon, YoutubeIcon } from "../icons";
 
@@ -65,7 +65,13 @@ export default function Footer() {
         </div>
 
         <div className="mt-14 flex flex-wrap justify-between gap-3 border-t border-[#0f1611]/20 pt-5 text-sm text-[#0f1611]/75">
-          <span>© 2026 CourseIt. Made for people who finish what they start.</span>
+          <span>
+            © 2026 CourseIt, a{" "}
+            <a href={LEGAL.parent.url} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-3 hover:text-[#0f1611]">
+              {LEGAL.parent.name}
+            </a>{" "}
+            product. Made for people who finish what they start.
+          </span>
           <span>Videos play in YouTube&apos;s own player. Creators keep their views.</span>
         </div>
       </div>

@@ -12,6 +12,7 @@ import type { Testimonial } from "@/types/testimonials";
 // PLACEHOLDERS: fill these in before launch. They appear on the Privacy and Terms pages.
 export const LEGAL = {
   operator: "Triggerfy Services",
+  parent: { name: "Triggerfy", url: "https://triggerfy.xyz" }, // CourseIt is a Triggerfy product
   contactEmail: "hello@triggerfy.xyz",
   jurisdiction: "India",
   lastUpdated: "October 27, 2026",
@@ -64,12 +65,11 @@ export const FOOTER_COLUMNS: { title: string; links: NavLink[] }[] = [
   { title: "Legal", links: LEGAL_LINKS },
 ];
 
-// PLACEHOLDERS: put the real profile URLs here.
+// The maker's profiles (footer icons and About). Add YouTube back with a real channel URL.
 export const SOCIAL_LINKS = [
-  { label: "Instagram", href: "#" },
-  { label: "YouTube", href: "#" },
-  { label: "LinkedIn", href: "#" },
-  { label: "X", href: "#" },
+  { label: "LinkedIn", href: "https://www.linkedin.com/in/abhishek-01k/" },
+  { label: "X", href: "https://x.com/abhish_3k" },
+  { label: "Instagram", href: "https://www.instagram.com/why_singh_why/" },
 ] as const;
 
 export const NAV_LINKS: NavLink[] = [

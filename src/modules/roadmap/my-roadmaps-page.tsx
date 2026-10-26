@@ -10,24 +10,40 @@ import { getMyRoadmaps } from "./queries";
 async function Mine() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  const mine = await getMyRoadmaps(session.user.id);
+  const { mine, following } = await getMyRoadmaps(session.user.id);
   return (
-    <section aria-labelledby="mine-title" className="flex flex-col gap-3.5">
-      <h2 id="mine-title" className="flex items-baseline gap-2 text-[1.6rem]">
-        Yours <span className="text-[1rem] text-ink-soft tabular-nums">{mine.length}</span>
-      </h2>
-      {mine.length ? (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(340px,100%),1fr))] gap-[18px]">
-          {mine.map((r) => (
-            <li key={r.id} className="flex">
-              <RoadmapCard roadmap={r} variant="mine" />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-ink-soft">No roadmaps yet. Name one above, or start from one in Community.</p>
+    <>
+      <section aria-labelledby="mine-title" className="flex flex-col gap-3.5">
+        <h2 id="mine-title" className="flex items-baseline gap-2 text-[1.6rem]">
+          Yours <span className="text-[1rem] text-ink-soft tabular-nums">{mine.length}</span>
+        </h2>
+        {mine.length ? (
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(340px,100%),1fr))] gap-[18px]">
+            {mine.map((r) => (
+              <li key={r.id} className="flex">
+                <RoadmapCard roadmap={r} variant="mine" />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-ink-soft">No roadmaps yet. Name one above, or follow one from Community.</p>
+        )}
+      </section>
+      {following.length > 0 && (
+        <section aria-labelledby="following-title" className="flex flex-col gap-3.5">
+          <h2 id="following-title" className="flex items-baseline gap-2 text-[1.6rem]">
+            Following <span className="text-[1rem] text-ink-soft tabular-nums">{following.length}</span>
+          </h2>
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(340px,100%),1fr))] gap-[18px]">
+            {following.map((r) => (
+              <li key={r.id} className="flex">
+                <RoadmapCard roadmap={r} variant="following" />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
-    </section>
+    </>
   );
 }
 

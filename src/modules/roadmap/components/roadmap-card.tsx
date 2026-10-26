@@ -3,9 +3,7 @@ import Link from "next/link";
 import StatusBadge from "@/components/status-badge";
 import { roadmapPath } from "@/lib/paths";
 import { formatDuration, timeAgo } from "@/lib/utils";
-import type { getMyRoadmaps } from "../queries";
-
-type Summary = Awaited<ReturnType<typeof getMyRoadmaps>>[number];
+import type { RoadmapSummary as Summary } from "../queries";
 
 const initials = (name: string) =>
   name
@@ -15,8 +13,9 @@ const initials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-// A roadmap in a grid. "mine": visibility + your progress; "community": who made it, creators, Open.
-export default function RoadmapCard({ roadmap: r, variant }: { roadmap: Summary; variant: "mine" | "community" }) {
+// A roadmap in a grid. "mine": visibility + your progress; "following": who made it + your progress;
+// "community": who made it, creators, followers, Open.
+export default function RoadmapCard({ roadmap: r, variant }: { roadmap: Summary; variant: "mine" | "following" | "community" }) {
   const facts = `${r.courseCount} ${r.courseCount === 1 ? "course" : "courses"}${r.seconds ? ` · ${formatDuration(r.seconds)} of video` : ""}`;
   const creators = r.creators.length > 3 ? `${r.creators.slice(0, 3).join(", ")} +${r.creators.length - 3}` : r.creators.join(", ");
   return (
@@ -60,7 +59,7 @@ export default function RoadmapCard({ roadmap: r, variant }: { roadmap: Summary;
         </ol>
       )}
 
-      {variant === "mine" ? (
+      {variant !== "community" ? (
         <div className="mt-auto flex flex-col gap-2 border-t pt-3">
           <div className="flex justify-between gap-3 text-[0.88rem] text-ink-soft tabular-nums">
             <span>{facts}</span>
@@ -77,7 +76,7 @@ export default function RoadmapCard({ roadmap: r, variant }: { roadmap: Summary;
             {creators && <span>{creators}</span>}
           </div>
           <div className="mt-auto flex items-center justify-between gap-3 border-t pt-3.5">
-            <span className="text-[0.88rem] text-ink-soft">Updated {timeAgo(r.updatedAt)}</span>
+            <span className="text-[0.88rem] text-ink-soft tabular-nums">{r.followers ? `${r.followers.toLocaleString("en")} following` : `Updated ${timeAgo(r.updatedAt)}`}</span>
             <span className="inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-[0.88rem] font-medium shadow-[inset_0_0_0_1px_var(--line)]">
               Open roadmap
               <ArrowRight aria-hidden="true" className="size-4" />

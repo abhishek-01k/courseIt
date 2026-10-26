@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
@@ -16,22 +16,22 @@ import { getCourseBySlug, getCoursePlan, getCourseSteps, isEnrolled, touchEnroll
 
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const [{ slug }, session] = await Promise.all([params, auth()]);
-  if (!session?.user?.id) redirect("/login");
+  // Signed out is fine: a shared link shows the course; anything that saves asks to sign in first.
+  const userId = session?.user?.id ?? null;
 
   const course = await getCourseBySlug(slug);
   if (!course) notFound();
   const id = course.id;
-  const userId = session.user.id;
   const [plan, steps, test, placement, enrolled, roadmaps] = await Promise.all([
-    getCoursePlan(userId, id),
+    getCoursePlan(userId ?? "", id), // no user: the default daily time and no progress
     getCourseSteps(id),
     getPlacementTest(id),
-    getPlacementResult(userId, id),
-    isEnrolled(userId, id),
-    getRoadmapsForCourse(userId, id),
+    userId ? getPlacementResult(userId, id) : null,
+    userId ? isEnrolled(userId, id) : false,
+    userId ? getRoadmapsForCourse(userId, id) : [],
   ]);
   // Opening a course doesn't enroll you (Enroll, a lesson or the placement test does); it only bumps Recents.
-  after(() => touchEnrollment(userId, id));
+  if (userId) after(() => touchEnrollment(userId, id));
 
   console.log("course",course);
   const building = course.status !== "ready" && course.status !== "failed";
@@ -39,18 +39,24 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   return (
     <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 pt-8 pb-20 sm:px-6">
       {building && <RefreshWhileBuilding />}
-      <Link href="/courses" className="inline-flex items-center gap-2 self-start text-[0.9rem] text-ink-soft hover:text-ink">
-        <ArrowLeft aria-hidden="true" className="size-4" />
-        All courses
-      </Link>
-      <CourseHeader course={course} lessonCount={plan.lessons.length} menu={<CourseMenu courseId={id} courseTitle={course.title} enrolled={enrolled} roadmaps={roadmaps} />} />
+      {userId && (
+        <Link href="/courses" className="inline-flex items-center gap-2 self-start text-[0.9rem] text-ink-soft hover:text-ink">
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          All courses
+        </Link>
+      )}
+      <CourseHeader
+        course={course}
+        lessonCount={plan.lessons.length}
+        menu={<CourseMenu slug={slug} courseId={id} courseTitle={course.title} signedIn={Boolean(userId)} enrolled={enrolled} roadmaps={roadmaps} />}
+      />
 
       {building && <BuildStatus steps={steps} now={new Date()} />}
 
-      {course.status === "failed" && (
+      {userId && course.status === "failed" && (
         <RetryBanner courseId={course.id} message="Something went wrong while building this course. Retry picks up where it stopped." />
       )}
-      {course.status === "ready" && course.error && (
+      {userId && course.status === "ready" && course.error && (
         <RetryBanner courseId={course.id} message={`${course.error} The rest of the course is ready to use.`} />
       )}
 
@@ -70,9 +76,9 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           )}
           <section aria-labelledby="lessons-title" className="flex flex-col gap-4">
             <div className="flex justify-between items-center">
-              <h2 id="lessons-title" className="text-[1.5rem]">Your plan</h2>
+              <h2 id="lessons-title" className="text-[1.5rem]">{userId ? "Your plan" : "The plan"}</h2>
               <span className="ml-2 align-middle text-[0.9rem] text-ink-soft tabular-nums">
-                {plan.lessons.filter((l) => l.done).length} / {plan.lessons.length} lessons done
+                {userId ? `${plan.lessons.filter((l) => l.done).length} / ${plan.lessons.length} lessons done` : `${plan.dayCount} days at ${plan.minutesPerDay} min a day`}
               </span>
             </div>
             <LessonList slug={slug} plan={plan} building={building} />

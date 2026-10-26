@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { courses, lessonProgress, lessons, lessonWatch, roadmapCourses, roadmaps, roadmapStages, users } from "@/db/schema";
+import { courses, lessonProgress, lessons, lessonWatch, roadmapCourses, roadmapFollows, roadmaps, roadmapStages, users } from "@/db/schema";
 
 /** Lessons done (watched to 80% or quiz done, as in the course plan) out of all lessons, per course. */
 export async function getCourseProgress(userId: string, courseIds: string[]) {
@@ -27,13 +27,14 @@ type Summary = { id: string; slug: string; title: string; published: boolean; up
 async function summarize<T extends Summary>(list: T[], userId?: string) {
   if (!list.length) return [];
   const ids = list.map((r) => r.id);
-  const [stages, items] = await Promise.all([
+  const [stages, items, follows] = await Promise.all([
     db.select({ roadmapId: roadmapStages.roadmapId, name: roadmapStages.name }).from(roadmapStages).where(inArray(roadmapStages.roadmapId, ids)).orderBy(asc(roadmapStages.position)),
     db
       .select({ roadmapId: roadmapCourses.roadmapId, courseId: courses.id, channel: courses.channel, durationSeconds: courses.durationSeconds })
       .from(roadmapCourses)
       .innerJoin(courses, eq(courses.id, roadmapCourses.courseId))
       .where(inArray(roadmapCourses.roadmapId, ids)),
+    db.select({ roadmapId: roadmapFollows.roadmapId, n: count() }).from(roadmapFollows).where(inArray(roadmapFollows.roadmapId, ids)).groupBy(roadmapFollows.roadmapId),
   ]);
   const progress = userId ? await getCourseProgress(userId, [...new Set(items.map((i) => i.courseId))]) : new Map();
   return list.map((r) => {
@@ -48,16 +49,29 @@ async function summarize<T extends Summary>(list: T[], userId?: string) {
       seconds: mine.reduce((t, i) => t + i.durationSeconds, 0),
       creators: [...new Set(mine.map((i) => i.channel))],
       pct: total ? Math.round((done / total) * 100) : 0,
+      followers: follows.find((f) => f.roadmapId === r.id)?.n ?? 0,
     };
   });
 }
 
 const summaryColumns = { id: roadmaps.id, slug: roadmaps.slug, title: roadmaps.title, published: roadmaps.published, updatedAt: roadmaps.updatedAt, author: users.name };
 
+/** Roadmaps you made, and published roadmaps you follow (they stay in sync with their creator's changes). */
 export async function getMyRoadmaps(userId: string) {
-  const list = await db.select(summaryColumns).from(roadmaps).innerJoin(users, eq(users.id, roadmaps.ownerId)).where(eq(roadmaps.ownerId, userId)).orderBy(desc(roadmaps.updatedAt));
-  return summarize(list, userId);
+  const [mine, following] = await Promise.all([
+    db.select(summaryColumns).from(roadmaps).innerJoin(users, eq(users.id, roadmaps.ownerId)).where(eq(roadmaps.ownerId, userId)).orderBy(desc(roadmaps.updatedAt)),
+    db
+      .select(summaryColumns)
+      .from(roadmapFollows)
+      .innerJoin(roadmaps, eq(roadmaps.id, roadmapFollows.roadmapId))
+      .innerJoin(users, eq(users.id, roadmaps.ownerId))
+      .where(and(eq(roadmapFollows.userId, userId), eq(roadmaps.published, true)))
+      .orderBy(desc(roadmapFollows.createdAt)),
+  ]);
+  const [a, b] = await Promise.all([summarize(mine, userId), summarize(following, userId)]);
+  return { mine: a, following: b };
 }
+export type RoadmapSummary = Awaited<ReturnType<typeof getMyRoadmaps>>["mine"][number];
 
 // ponytail: newest 60 matching the search; paging when Community has more roadmaps than fit.
 export async function getPublishedRoadmaps(q = "") {
@@ -78,10 +92,10 @@ export async function countPublishedRoadmaps() {
 }
 
 /**
- * One roadmap with its stages and courses, for the owner or (once published) anyone signed in.
+ * One roadmap with its stages and courses, for the owner or (once published) anyone, signed in or not.
  * Progress is the viewer's own.
  */
-export async function getRoadmap(slug: string, viewerId: string) {
+export async function getRoadmap(slug: string, viewerId: string | null) {
   const [roadmap] = await db
     .select({ id: roadmaps.id, slug: roadmaps.slug, title: roadmaps.title, description: roadmaps.description, published: roadmaps.published, ownerId: roadmaps.ownerId, updatedAt: roadmaps.updatedAt, author: users.name })
     .from(roadmaps)
@@ -89,7 +103,7 @@ export async function getRoadmap(slug: string, viewerId: string) {
     .where(eq(roadmaps.slug, slug));
   if (!roadmap || (!roadmap.published && roadmap.ownerId !== viewerId)) return null;
 
-  const [stages, items] = await Promise.all([
+  const [stages, items, [{ followerCount }], followers, [following]] = await Promise.all([
     db.select().from(roadmapStages).where(eq(roadmapStages.roadmapId, roadmap.id)).orderBy(asc(roadmapStages.position)),
     db
       .select({ stageId: roadmapCourses.stageId, id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, durationSeconds: courses.durationSeconds, status: courses.status })
@@ -97,16 +111,31 @@ export async function getRoadmap(slug: string, viewerId: string) {
       .innerJoin(courses, eq(courses.id, roadmapCourses.courseId))
       .where(eq(roadmapCourses.roadmapId, roadmap.id))
       .orderBy(asc(roadmapCourses.position)),
+    db.select({ followerCount: count() }).from(roadmapFollows).where(eq(roadmapFollows.roadmapId, roadmap.id)),
+    db
+      .select({ id: users.id, name: users.name, image: users.image })
+      .from(roadmapFollows)
+      .innerJoin(users, eq(users.id, roadmapFollows.userId))
+      .where(eq(roadmapFollows.roadmapId, roadmap.id))
+      .orderBy(desc(roadmapFollows.createdAt))
+      .limit(12),
+    viewerId
+      ? db.select({ userId: roadmapFollows.userId }).from(roadmapFollows).where(and(eq(roadmapFollows.roadmapId, roadmap.id), eq(roadmapFollows.userId, viewerId)))
+      : Promise.resolve([]),
   ]);
-  const progress = await getCourseProgress(viewerId, items.map((i) => i.id));
+  const progress = viewerId ? await getCourseProgress(viewerId, items.map((i) => i.id)) : new Map<string, { done: number; total: number; pct: number }>();
   const withPct = items.map((i) => ({ ...i, pct: progress.get(i.id)?.pct ?? 0, lessons: progress.get(i.id)?.total ?? 0 }));
   const done = items.reduce((t, i) => t + (progress.get(i.id)?.done ?? 0), 0);
   const total = items.reduce((t, i) => t + (progress.get(i.id)?.total ?? 0), 0);
   return {
     ...roadmap,
     isOwner: roadmap.ownerId === viewerId,
+    isFollowing: Boolean(following),
+    followerCount,
+    followers,
     stages: stages.map((s) => ({ ...s, courses: withPct.filter((i) => i.stageId === s.id) })),
     courseCount: items.length,
+    seconds: items.reduce((t, i) => t + i.durationSeconds, 0),
     coursesDone: withPct.filter((i) => i.lessons > 0 && i.pct === 100).length,
     pct: total ? Math.round((done / total) * 100) : 0,
     creators: [...new Set(items.map((i) => i.channel))],
@@ -136,8 +165,3 @@ export async function getRoadmapsForCourse(userId: string, courseId: string) {
   }));
 }
 export type RoadmapChoice = Awaited<ReturnType<typeof getRoadmapsForCourse>>[number];
-
-export async function countMyRoadmaps(userId: string) {
-  const [{ n }] = await db.select({ n: count() }).from(roadmaps).where(eq(roadmaps.ownerId, userId));
-  return n;
-}

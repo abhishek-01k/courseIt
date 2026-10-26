@@ -1,9 +1,9 @@
 "use client";
 
-import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { addCourseLinkAction, addStageAction, removeCourseAction, removeStageAction, type RoadmapFormState, renameStageAction } from "../actions";
+import { addCourseLinkAction, addStageAction, moveStageAction, removeCourseAction, removeStageAction, type RoadmapFormState, renameStageAction } from "../actions";
 
 const field = "min-h-11 min-w-0 rounded-xl bg-paper px-3 text-ink shadow-[inset_0_0_0_1px_var(--line)] outline-none focus-visible:ring-2 focus-visible:ring-dusk";
 
@@ -85,9 +85,13 @@ export function AddStageForm({ roadmapId, next }: { roadmapId: string; next: num
   );
 }
 
-/** Rename or remove a stage (owner only). Removing takes its courses off the roadmap, not out of My courses. */
-export function StageControls({ stageId, name }: { stageId: string; name: string }) {
+/**
+ * Move, rename or remove a stage (owner only). Removing takes its courses off the roadmap, not out of
+ * My courses.
+ */
+export function StageControls({ stageId, name, first, last }: { stageId: string; name: string; first: boolean; last: boolean }) {
   const [mode, setMode] = useState<"idle" | "rename" | "remove">("idle");
+  const [moving, startMove] = useTransition();
   const [removing, startRemove] = useTransition();
   const [state, action, pending] = useActionState<RoadmapFormState, FormData>(async (prev, data) => {
     const result = await renameStageAction(stageId, prev, data);
@@ -125,9 +129,16 @@ export function StageControls({ stageId, name }: { stageId: string; name: string
       </span>
     );
   }
+  const icon = "size-10 rounded-full";
   return (
-    <span className="inline-flex gap-1">
-      <Button type="button" variant="ghost" size="icon" className="size-10 rounded-full" aria-label={`Rename ${name}`} onClick={() => setMode("rename")}>
+    <span className="inline-flex gap-1" aria-busy={moving}>
+      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} up`} disabled={first || moving} onClick={() => startMove(() => moveStageAction(stageId, "up"))}>
+        <ArrowUp aria-hidden="true" className="size-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Move ${name} down`} disabled={last || moving} onClick={() => startMove(() => moveStageAction(stageId, "down"))}>
+        <ArrowDown aria-hidden="true" className="size-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="icon" className={icon} aria-label={`Rename ${name}`} onClick={() => setMode("rename")}>
         <Pencil aria-hidden="true" className="size-4" />
       </Button>
       <Button type="button" variant="ghost" size="icon" className="size-10 rounded-full" aria-label={`Remove ${name}`} onClick={() => setMode("remove")}>

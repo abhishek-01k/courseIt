@@ -41,9 +41,10 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
     .select({ built: count() })
     .from(courses)
     .where(and(eq(courses.createdBy, userId), gte(courses.createdAt, since)));
-  if (built >= COURSE_LIMITS.newCoursesPerDay) {
-    return { error: `You can build ${COURSE_LIMITS.newCoursesPerDay} new courses a day. Popular courses are always open.` };
-  }
+ 
+    // if (built >= COURSE_LIMITS.newCoursesPerDay) {
+  //   return { error: `You can build ${COURSE_LIMITS.newCoursesPerDay} new courses a day. Popular courses are always open.` };
+  // }
 
   let found;
   try {
@@ -55,9 +56,9 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
   }
 
   const durationSeconds = found.videos.reduce((total, v) => total + v.durationSeconds, 0);
-  if (durationSeconds > COURSE_LIMITS.maxTotalSeconds) {
-    return { error: `That's over ${COURSE_LIMITS.maxTotalSeconds / 3600} hours of video. Try a shorter playlist for now.` };
-  }
+  // if (durationSeconds > COURSE_LIMITS.maxTotalSeconds) {
+  //   return { error: `That's over ${COURSE_LIMITS.maxTotalSeconds / 3600} hours of video. Try a shorter playlist for now.` };
+  // }
 
   // neon-http has no interactive transactions; batch runs these in one transaction.
   const courseId = crypto.randomUUID();

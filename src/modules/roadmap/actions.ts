@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq, max } from "drizzle-orm";
+import { and, asc, eq, max } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { courses, roadmapCourses, roadmaps, roadmapStages } from "@/db/schema";
+import { courses, roadmapCourses, roadmapFollows, roadmaps, roadmapStages } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { newSlug, roadmapPath } from "@/lib/paths";
 import { startCourse } from "@/modules/course/start";
@@ -99,6 +99,36 @@ export async function removeStageAction(stageId: string) {
   const stage = await ownedStage(userId, stageId);
   if (!stage) return;
   await db.batch([db.delete(roadmapStages).where(eq(roadmapStages.id, stageId)), touch(stage.roadmapId)]); // its course links cascade
+  refresh();
+}
+
+/** Swaps a stage with the one above or below it. */
+export async function moveStageAction(stageId: string, direction: "up" | "down") {
+  const userId = await me();
+  const stage = await ownedStage(userId, stageId);
+  if (!stage) return;
+  const stages = await db.select({ id: roadmapStages.id, position: roadmapStages.position }).from(roadmapStages).where(eq(roadmapStages.roadmapId, stage.roadmapId)).orderBy(asc(roadmapStages.position));
+  const i = stages.findIndex((s) => s.id === stageId);
+  const j = direction === "up" ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= stages.length) return;
+  // Renumber 0..n so gaps left by removed stages never make a swap a no-op.
+  const order = stages.map((s) => s.id);
+  [order[i], order[j]] = [order[j], order[i]];
+  await db.batch([touch(stage.roadmapId), ...order.map((id, position) => db.update(roadmapStages).set({ position }).where(eq(roadmapStages.id, id)))]);
+  refresh();
+}
+
+/** Follow someone else's published roadmap: it joins your Roadmaps under "Following" and stays in sync. */
+export async function followRoadmapAction(roadmapId: string, follow: boolean) {
+  const userId = await me();
+  const [roadmap] = await db.select({ ownerId: roadmaps.ownerId, published: roadmaps.published }).from(roadmaps).where(eq(roadmaps.id, roadmapId));
+  if (!roadmap || roadmap.ownerId === userId) return;
+  if (follow) {
+    if (!roadmap.published) return;
+    await db.insert(roadmapFollows).values({ userId, roadmapId }).onConflictDoNothing();
+  } else {
+    await db.delete(roadmapFollows).where(and(eq(roadmapFollows.userId, userId), eq(roadmapFollows.roadmapId, roadmapId)));
+  }
   refresh();
 }
 

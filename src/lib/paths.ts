@@ -21,3 +21,18 @@ export const lessonPath = (slug: string, position: number) => `/courses/${slug}/
 /** The full-screen onboarding shown while a course builds. */
 export const buildPath = (slug: string) => `/build/${slug}`;
 export const roadmapPath = (slug: string) => `/roadmaps/${slug}`;
+/** Sign in, then come back here. */
+export const loginPath = (next: string) => `/login?callbackUrl=${encodeURIComponent(next)}`;
+/**
+ * Where to go after sign-in. Only a path on this site: a full URL (Auth.js sends one) keeps just its path,
+ * so a crafted link can never send someone to another site.
+ */
+export function safeNext(next: unknown) {
+  if (typeof next !== "string" || !next) return "/dashboard";
+  try {
+    const url = new URL(next, "http://courseit.local");
+    return `${url.pathname}${url.search}${url.hash}`.startsWith("//") ? "/dashboard" : `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/dashboard";
+  }
+}

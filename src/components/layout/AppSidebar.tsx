@@ -10,6 +10,7 @@ import { getEnrolledCourses } from "@/modules/course/queries";
 import { getSidebarCounts } from "@/modules/dashboard/queries";
 import { getCourseProgress } from "@/modules/roadmap/queries";
 import Logo from "./Logo";
+import Navbar from "./Navbar";
 import SidebarFrame from "./SidebarFrame";
 import SidebarNav, { NavList } from "./SidebarNav";
 import UserMenu from "./UserMenu";
@@ -62,7 +63,20 @@ async function SidebarRecents() {
 
 const userFallback = <div aria-hidden="true" className="h-[58px] rounded-[18px] bg-surface shadow-[0_0_0_1px_var(--line)]" />;
 
-export default function AppSidebar() {
+/**
+ * Signed in: the sidebar (and a top bar on phones). Signed out, which only happens on a shared course or
+ * roadmap link: the site's public top bar instead, so the page reads like the landing site.
+ */
+async function Chrome() {
+  const session = await auth();
+  if (!session?.user) {
+    return (
+      <>
+        <Navbar />
+        <div aria-hidden="true" className="h-[84px] shrink-0" />
+      </>
+    );
+  }
   return (
     <>
       <header className="sticky top-0 z-40 flex flex-col gap-2 border-b bg-paper/85 px-4 py-2.5 backdrop-blur-[14px] lg:hidden">
@@ -115,5 +129,13 @@ export default function AppSidebar() {
         </div>
       </SidebarFrame>
     </>
+  );
+}
+
+export default function AppSidebar() {
+  return (
+    <Suspense fallback={<aside aria-hidden="true" className="sticky top-0 hidden h-dvh w-[248px] shrink-0 border-r bg-sidebar lg:block" />}>
+      <Chrome />
+    </Suspense>
   );
 }

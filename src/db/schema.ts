@@ -318,6 +318,17 @@ export const roadmapCourses = pgTable(
   (t) => [primaryKey({ columns: [t.roadmapId, t.courseId] }), index("roadmap_course_stage_idx").on(t.stageId, t.position)],
 );
 
+// A learner following someone else's published roadmap: it shows under "Following" and stays in sync.
+export const roadmapFollows = pgTable(
+  "roadmap_follow",
+  {
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    roadmapId: text("roadmap_id").notNull().references(() => roadmaps.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.roadmapId] }), index("roadmap_follow_roadmap_idx").on(t.roadmapId, t.createdAt)],
+);
+
 export const coursesRelations = relations(courses, ({ many }) => ({ videos: many(courseVideos), lessons: many(lessons) }));
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
   course: one(courses, { fields: [lessons.courseId], references: [courses.id] }),

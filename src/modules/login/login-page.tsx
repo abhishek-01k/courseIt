@@ -5,6 +5,7 @@ import { Reveal } from "@/components/motion/reveal";
 import Pill from "@/components/pill";
 import AuthError from "./components/auth-error";
 import ProviderButtons from "./components/provider-buttons";
+import ProviderButtonsNext from "./components/provider-buttons-next";
 
 export default function LoginPage() {
   return (
@@ -26,7 +27,9 @@ export default function LoginPage() {
         <Suspense>
           <AuthError />
         </Suspense>
-        <ProviderButtons />
+        <Suspense fallback={<ProviderButtons />}>
+          <ProviderButtonsNext />
+        </Suspense>
         <p className="text-[0.8rem] text-ink-soft">
           By continuing you agree to our{" "}
           <Link href="/terms" className="underline underline-offset-2 hover:text-ink">

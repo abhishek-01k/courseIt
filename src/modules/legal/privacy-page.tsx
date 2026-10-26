@@ -60,8 +60,9 @@ export default function PrivacyPage() {
           <li>To keep CourseIt secure, fix problems and improve features.</li>
         </ul>
         <p>
-          <strong>AI processing.</strong> To build a course, video transcripts are sent to NVIDIA Nemotron models running on Nebius Token Factory. Topic
-          names may be sent to Tavily to find related reading. We send course content for these steps, not your name or email.
+          <strong>AI processing.</strong> To build a course, we fetch the public video&apos;s captions from Supadata (or, if it has none, Google Gemini
+          watches the public video), and send the transcript to NVIDIA Nemotron models running on Nebius Token Factory. Lesson and course titles are sent
+          to Tavily to find further reading. We send course content for these steps, not your name or email.
         </p>
         <p>
           <strong>Support and administration.</strong> The CourseIt team can view your account details (name, email, sign-in provider), when you were
@@ -75,7 +76,7 @@ export default function PrivacyPage() {
         <p>Only with services that help us run CourseIt, under their own privacy terms:</p>
         <ul className="flex flex-col gap-2">
           <li>Sign-in providers: Google, GitHub and X.</li>
-          <li>AI and search: Nebius (Token Factory) and Tavily.</li>
+          <li>AI, captions and search: Nebius (Token Factory), Google (Gemini), Supadata and Tavily.</li>
           <li>Hosting and storage providers that run our website and database.</li>
         </ul>
         <p>

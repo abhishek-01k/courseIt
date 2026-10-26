@@ -117,6 +117,7 @@ export const lessons = pgTable(
     endSeconds: integer("end_seconds").notNull(),
     summary: text("summary").notNull(),
     notes: text("notes"), // markdown study notes; null until this lesson is built
+    reading: jsonb("reading").$type<{ title: string; url: string }[]>().notNull().default([]), // "Further reading", found by Tavily
     ready: boolean("ready").notNull().default(false),
   },
   (t) => [index("lesson_course_idx").on(t.courseId, t.position)],

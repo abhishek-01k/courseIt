@@ -92,7 +92,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
         }
         studyNotes={
           lesson.notes ? (
-            <LessonNotes markdown={lesson.notes} />
+            <LessonNotes markdown={lesson.notes} reading={lesson.reading} />
           ) : (
             <p className="flex items-center gap-2.5 text-ink-soft">
               {writing && <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}

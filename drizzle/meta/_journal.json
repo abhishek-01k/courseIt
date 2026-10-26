@@ -120,6 +120,13 @@
       "when": 1793045124779,
       "tag": "0016_unpublish_user_roadmaps",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793047791949,
+      "tag": "0017_lesson_reading",
+      "breakpoints": true
     }
   ]
 }

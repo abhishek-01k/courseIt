@@ -6,6 +6,7 @@ import { readVideoSegment } from "@/lib/ai";
 import { AI } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils";
 import { planLessons, writeLesson, writePlacementTest } from "@/lib/course-writer";
+import { findReading } from "@/lib/tavily";
 import { fetchTranscript } from "@/lib/transcript";
 import { BUILD_COURSE, inngest } from "./client";
 
@@ -192,11 +193,15 @@ export const buildCourse = inngest.createFunction(
           `Writing lesson ${lesson.position + 1}: ${lesson.title}`,
           async () => {
             const [course] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId));
-            const written = await writeLesson(course.title, lesson, await notesFor(lesson.videoId));
+            // Tavily looks for further reading while Nemotron writes, so it adds no time.
+            const [written, reading] = await Promise.all([
+              writeLesson(course.title, lesson, await notesFor(lesson.videoId)),
+              findReading(`${lesson.title} (${course.title})`),
+            ]);
             await db.batch([
               db.delete(questions).where(eq(questions.lessonId, lessonId)),
               db.insert(questions).values(written.questions.map((q, position) => ({ ...q, lessonId, position }))),
-              db.update(lessons).set({ notes: written.notes, ready: true }).where(eq(lessons.id, lessonId)),
+              db.update(lessons).set({ notes: written.notes, reading, ready: true }).where(eq(lessons.id, lessonId)),
               // 60–100% by share of ready lessons; counted in SQL so parallel steps can't overwrite each other.
               db
                 .update(courses)
@@ -205,9 +210,9 @@ export const buildCourse = inngest.createFunction(
                 })
                 .where(eq(courses.id, courseId)),
             ]);
-            return written;
+            return { ...written, links: reading.length };
           },
-          (w) => `${AI.modelNames[w.model]} · ${words(w.notes)} words of notes · ${w.questions.length} quiz questions`,
+          (w) => `${AI.modelNames[w.model]} · ${words(w.notes)} words of notes · ${w.questions.length} quiz questions${w.links ? ` · ${w.links} reading links via Tavily` : ""}`,
         );
       });
 

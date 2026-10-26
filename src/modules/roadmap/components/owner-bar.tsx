@@ -5,17 +5,18 @@ import { useActionState, useState, useTransition } from "react";
 import Modal from "@/components/modal";
 import { act } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
-import { deleteRoadmapAction, type RoadmapFormState, updateRoadmapAction } from "../actions";
+import { deleteRoadmapAction, type RoadmapFormState, setPublishedAction, updateRoadmapAction } from "../actions";
 
-type Props = { id: string; title: string; description: string };
+type Props = { id: string; title: string; description: string; published: boolean; admin: boolean };
 
 const field = "rounded-[14px] bg-paper px-3.5 text-ink shadow-[inset_0_0_0_1px_var(--line)] outline-none focus-visible:ring-2 focus-visible:ring-dusk";
 
 // The owner's buttons on a roadmap: Edit (name, description; a centered dialog) and Delete (asks first).
-// Roadmaps are private; sharing the link lets others enroll. Only admins publish to Community.
-export default function OwnerBar({ id, title, description }: Props) {
+// Roadmaps are private; sharing the link lets others enroll. Admins also get Publish to Community.
+export default function OwnerBar({ id, title, description, published, admin }: Props) {
   const [open, setOpen] = useState<"edit" | "delete" | null>(null);
   const [deleting, startDelete] = useTransition();
+  const [publishing, startPublish] = useTransition();
   const [, action, saving] = useActionState<RoadmapFormState, FormData>(async (prev, formData) => {
     const next = (await act(() => updateRoadmapAction(id, prev, formData), "Couldn't save the roadmap.")) ?? prev;
     if (next.ok) setOpen(null);
@@ -29,6 +30,17 @@ export default function OwnerBar({ id, title, description }: Props) {
         <Pencil aria-hidden="true" />
         Edit
       </Button>
+      {admin && (
+        <Button
+          type="button"
+          size="lg"
+          disabled={publishing}
+          onClick={() => startPublish(async () => void (await act(() => setPublishedAction(id, !published), published ? "Couldn't take it out of Community." : "Couldn't publish to Community.")))}
+        >
+          {publishing && <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />}
+          {published ? "Remove from Community" : "Publish to Community"}
+        </Button>
+      )}
 
       <Modal open={open === "edit"} onOpenChange={close} title="Edit roadmap">
         <form action={action} className="flex flex-col gap-3">

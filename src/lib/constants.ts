@@ -14,7 +14,7 @@ export const LEGAL = {
   operator: "Triggerfy Services",
   contactEmail: "hello@triggerfy.xyz",
   jurisdiction: "India",
-  lastUpdated: "October 24, 2026",
+  lastUpdated: "October 27, 2026",
 };
 
 export const LEGAL_LINKS: NavLink[] = [

@@ -16,8 +16,8 @@ import CourseUrlForm from "./course-url-form";
 
 type Props = {
   firstName: string | null;
-  greeting: Awaited<ReturnType<typeof getGreeting>>;
-  resume: NonNullable<Awaited<ReturnType<typeof getContinue>>>;
+  greeting: ReturnType<typeof getGreeting>;
+  resume: ReturnType<typeof getContinue>;
   stats: Awaited<ReturnType<typeof getWeekStats>>;
   myCourses: Awaited<ReturnType<typeof getMyCourses>>;
 };

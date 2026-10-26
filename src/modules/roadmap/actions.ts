@@ -5,6 +5,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { courses, roadmapCourses, roadmapFollows, roadmaps, roadmapStages } from "@/db/schema";
+import { isAdmin } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import { newSlug, roadmapPath } from "@/lib/paths";
 import { startCourse } from "@/modules/course/start";
@@ -55,6 +56,18 @@ export async function updateRoadmapAction(roadmapId: string, _prev: RoadmapFormS
   if (title.length < 3) return { error: "The name needs at least 3 characters." };
   const description = String(formData.get("description") ?? "").trim().slice(0, 400);
   await db.update(roadmaps).set({ title, description, updatedAt: new Date() }).where(eq(roadmaps.id, roadmapId));
+  refresh();
+  return { ok: true };
+}
+
+/** Community roadmaps are made by admins: an admin publishes (or takes down) one of their own roadmaps. */
+export async function setPublishedAction(roadmapId: string, published: boolean): Promise<RoadmapFormState> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) redirect("/login");
+  if (!isAdmin(session.user?.email)) return { error: "Only admins can publish roadmaps to Community." };
+  if (!(await owned(userId, roadmapId))) return NOT_YOURS;
+  await db.update(roadmaps).set({ published, updatedAt: new Date() }).where(eq(roadmaps.id, roadmapId));
   refresh();
   return { ok: true };
 }

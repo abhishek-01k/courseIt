@@ -26,3 +26,12 @@ export function formatClock(seconds: number) {
   const s = String(t % 60).padStart(2, "0");
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
+
+/** "Ada Lovelace" → "AL", for an avatar without a photo. */
+export const initials = (name: string | null) =>
+  (name ?? "?")
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();

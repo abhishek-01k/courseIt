@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import PopularCourses from "./components/popular-courses";
 import ReturningToday from "./components/returning-today";
 import StartCourse from "./components/start-course";
-import { getContinue, getGreeting, getMyCourses, getWeekStats } from "./queries";
+import { getContinue, getGreeting, getMyCourses, getTimezone, getWeekStats } from "./queries";
 
 // New learners get the welcome with the paste box and popular courses; once they've started a course,
 // Today becomes the daily view (storyboard frame 8).
@@ -14,8 +14,10 @@ async function Today() {
   const userId = session?.user?.id;
   if (!userId) redirect("/login");
 
-  const resume = await getContinue(userId);
-  if (!resume) {
+  // Two rounds: the course list and timezone, then the day plans and the week's stats side by side.
+  const zone = getTimezone(userId);
+  const [myCourses, stats, timezone] = await Promise.all([getMyCourses(userId), zone.then((z) => getWeekStats(userId, z)), zone]);
+  if (!myCourses.length) {
     return (
       <>
         <StartCourse />
@@ -23,8 +25,15 @@ async function Today() {
       </>
     );
   }
-  const [greeting, stats, myCourses] = await Promise.all([getGreeting(userId), getWeekStats(userId), getMyCourses(userId)]);
-  return <ReturningToday firstName={session.user?.name?.split(" ")[0] ?? null} greeting={greeting} resume={resume} stats={stats} myCourses={myCourses} />;
+  return (
+    <ReturningToday
+      firstName={session.user?.name?.split(" ")[0] ?? null}
+      greeting={getGreeting(timezone)}
+      resume={getContinue(myCourses[0])}
+      stats={stats}
+      myCourses={myCourses}
+    />
+  );
 }
 
 function TodaySkeleton() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Crown, LogOut, Settings } from "lucide-react";
+import { ChevronDown, Crown, LogOut, Settings, ShieldCheck } from "lucide-react";
 import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -18,7 +18,7 @@ import type { UserMenuProps } from "@/types/user-menu";
 
 const item = "min-h-11 gap-3 rounded-xl px-3 text-[0.95rem] text-ink focus:bg-lime-soft focus:text-pill-ink";
 
-export default function UserMenu({ name, image, plan }: UserMenuProps) {
+export default function UserMenu({ name, image, plan, admin }: UserMenuProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const dark = resolvedTheme === "dark";
   const initials = name
@@ -54,6 +54,12 @@ export default function UserMenu({ name, image, plan }: UserMenuProps) {
           <Settings className="size-[18px]" />
           Settings
         </DropdownMenuItem>
+        {admin && (
+          <DropdownMenuItem render={<Link href="/admin" />} className={item}>
+            <ShieldCheck className="size-[18px]" />
+            Admin
+          </DropdownMenuItem>
+        )}
         {/* ponytail: no Pricing page yet; enable when it ships. */}
         <DropdownMenuItem disabled className={item}>
           <Crown className="size-[18px]" />

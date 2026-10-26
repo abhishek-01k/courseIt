@@ -8,9 +8,10 @@ import StatusBadge from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { isAdmin } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import { coursePath, loginPath, roadmapPath } from "@/lib/paths";
-import { cn, formatDuration } from "@/lib/utils";
+import { cn, formatDuration, initials } from "@/lib/utils";
 import EnrollButton from "./components/enroll-button";
 import OwnerBar from "./components/owner-bar";
 import {
@@ -35,14 +36,6 @@ const LOOK = {
 const finished = (s: Stage) =>
   s.courses.length > 0 &&
   s.courses.every((c) => c.lessons > 0 && c.pct === 100);
-
-const initials = (name: string | null) =>
-  (name ?? "?")
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
 export default async function RoadmapPage({
   params,
@@ -123,6 +116,8 @@ export default async function RoadmapPage({
               id={roadmap.id}
               title={roadmap.title}
               description={roadmap.description}
+              published={roadmap.published}
+              admin={isAdmin(session?.user?.email)}
             />
           ) : userId ? (
             <EnrollButton

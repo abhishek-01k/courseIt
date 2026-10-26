@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
 import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, questions, users, videos } from "@/db/schema";
@@ -99,23 +99,17 @@ export async function getMyAnswers(userId: string, lessonId: string) {
   return Object.fromEntries(rows.map((r) => [r.questionId, r.chosenIndex]));
 }
 
-export async function getCompletedLessonIds(userId: string, courseId: string) {
-  const rows = await db
-    .select({ lessonId: lessonProgress.lessonId })
-    .from(lessonProgress)
-    .where(and(eq(lessonProgress.userId, userId), eq(lessonProgress.courseId, courseId)));
-  return new Set(rows.map((r) => r.lessonId));
-}
-
 /**
- * The learner's day-by-day plan for a course: every lesson with its day (packed from their pace),
+ * The learner's day-by-day plan for each course: every lesson with its day (packed from their pace),
  * whether they've watched it (80%) and done its quiz. "today" is the first day with something left.
+ * One set of 5 queries however many courses, so a list of courses doesn't cost 5 queries per course.
  */
-export async function getCoursePlan(userId: string, courseId: string) {
+export async function getCoursePlans(userId: string, courseIds: string[]) {
   const [rows, [user], watched, quizzed, skips] = await Promise.all([
     db
       .select({
         id: lessons.id,
+        courseId: lessons.courseId,
         position: lessons.position,
         title: lessons.title,
         summary: lessons.summary,
@@ -127,33 +121,45 @@ export async function getCoursePlan(userId: string, courseId: string) {
       })
       .from(lessons)
       .innerJoin(videos, eq(videos.id, lessons.videoId))
-      .where(eq(lessons.courseId, courseId))
+      .where(inArray(lessons.courseId, courseIds))
       .orderBy(asc(lessons.position)),
     db.select({ minutesPerDay: users.minutesPerDay }).from(users).where(eq(users.id, userId)),
-    db.select({ lessonId: lessonWatch.lessonId, watchedAt: lessonWatch.watchedAt, watchedSeconds: lessonWatch.watchedSeconds }).from(lessonWatch).where(and(eq(lessonWatch.userId, userId), eq(lessonWatch.courseId, courseId))),
-    getCompletedLessonIds(userId, courseId),
-    db.select({ lessonId: lessonSkips.lessonId }).from(lessonSkips).where(and(eq(lessonSkips.userId, userId), eq(lessonSkips.courseId, courseId))),
+    db.select({ lessonId: lessonWatch.lessonId, watchedAt: lessonWatch.watchedAt, watchedSeconds: lessonWatch.watchedSeconds }).from(lessonWatch).where(and(eq(lessonWatch.userId, userId), inArray(lessonWatch.courseId, courseIds))),
+    db.select({ lessonId: lessonProgress.lessonId }).from(lessonProgress).where(and(eq(lessonProgress.userId, userId), inArray(lessonProgress.courseId, courseIds))),
+    db.select({ lessonId: lessonSkips.lessonId }).from(lessonSkips).where(and(eq(lessonSkips.userId, userId), inArray(lessonSkips.courseId, courseIds))),
   ]);
 
   const minutesPerDay = user?.minutesPerDay ?? 90; // a user setting (Settings), the same for every course
   const watch = new Map(watched.map((w) => [w.lessonId, w]));
+  const quizDoneIds = new Set(quizzed.map((q) => q.lessonId));
   const skipped = new Set(skips.map((s) => s.lessonId));
-  // Days are packed from the lessons the learner will actually watch; a skipped lesson sits in the day of
-  // the next lesson they will watch (or the last day), shown greyed out.
-  const kept = rows.filter((l) => !skipped.has(l.id));
-  const keptDays = packDays(kept.map((l) => l.endSeconds - l.startSeconds), minutesPerDay);
-  const dayOf = new Map(kept.map((l, i) => [l.id, keptDays[i]]));
-  const lastDay = keptDays.at(-1) ?? 1;
-  const plan = rows.map((l, i) => {
-    const w = watch.get(l.id);
-    const isWatched = Boolean(w?.watchedAt);
-    const quizDone = quizzed.has(l.id);
-    const isSkipped = skipped.has(l.id);
-    const day = dayOf.get(l.id) ?? dayOf.get(rows.slice(i + 1).find((n) => dayOf.has(n.id))?.id ?? "") ?? lastDay;
-    return { ...l, day, skipped: isSkipped, watched: isWatched, watchedSeconds: w?.watchedSeconds ?? 0, quizDone, done: isWatched || quizDone };
-  });
-  const today = plan.find((l) => !l.done && !l.skipped)?.day ?? null;
-  return { minutesPerDay, lessons: plan, dayCount: keptDays.length ? lastDay : 0, today };
+
+  return new Map(
+    courseIds.map((courseId) => {
+      const course = rows.filter((l) => l.courseId === courseId);
+      // Days are packed from the lessons the learner will actually watch; a skipped lesson sits in the day of
+      // the next lesson they will watch (or the last day), shown greyed out.
+      const kept = course.filter((l) => !skipped.has(l.id));
+      const keptDays = packDays(kept.map((l) => l.endSeconds - l.startSeconds), minutesPerDay);
+      const dayOf = new Map(kept.map((l, i) => [l.id, keptDays[i]]));
+      const lastDay = keptDays.at(-1) ?? 1;
+      const plan = course.map((l, i) => {
+        const w = watch.get(l.id);
+        const isWatched = Boolean(w?.watchedAt);
+        const quizDone = quizDoneIds.has(l.id);
+        const isSkipped = skipped.has(l.id);
+        const day = dayOf.get(l.id) ?? dayOf.get(course.slice(i + 1).find((n) => dayOf.has(n.id))?.id ?? "") ?? lastDay;
+        return { ...l, day, skipped: isSkipped, watched: isWatched, watchedSeconds: w?.watchedSeconds ?? 0, quizDone, done: isWatched || quizDone };
+      });
+      const today = plan.find((l) => !l.done && !l.skipped)?.day ?? null;
+      return [courseId, { minutesPerDay, lessons: plan, dayCount: keptDays.length ? lastDay : 0, today }];
+    }),
+  );
+}
+
+/** One course's plan (see getCoursePlans). */
+export async function getCoursePlan(userId: string, courseId: string) {
+  return (await getCoursePlans(userId, [courseId])).get(courseId)!;
 }
 
 export type CoursePlan = Awaited<ReturnType<typeof getCoursePlan>>;

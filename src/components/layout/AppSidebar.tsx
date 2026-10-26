@@ -3,6 +3,7 @@ import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { Suspense } from "react";
 import { buttonVariants } from "@/components/ui/button";
+import { isAdmin } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { coursePath } from "@/lib/paths";
@@ -21,7 +22,8 @@ const navLink = "flex min-h-11 items-center gap-3 rounded-xl px-3 text-[0.95rem]
 
 async function SidebarUser() {
   const session = await auth();
-  return <UserMenu name={session?.user?.name ?? "Learner"} image={session?.user?.image} plan="Free beta" />;
+  const admin = isAdmin(session?.user?.email);
+  return <UserMenu name={session?.user?.name ?? "Learner"} image={session?.user?.image} plan={admin ? "Admin" : "Free beta"} admin={admin} />;
 }
 
 async function MainNav() {

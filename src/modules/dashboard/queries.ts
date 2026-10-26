@@ -1,7 +1,7 @@
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { attempts, courses, enrollments, lessonProgress, lessonWatch, notes, roadmapFollows, roadmaps, userDays, users } from "@/db/schema";
-import { getCoursePlan } from "@/modules/course/queries";
+import { getCoursePlans } from "@/modules/course/queries";
 
 const dayKey = (date: Date, zone: string) => new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(date);
 
@@ -9,9 +9,7 @@ const dayKey = (date: Date, zone: string) => new Intl.DateTimeFormat("en-CA", { 
  * Days in a row the learner opened CourseIt, like a daily check-in. Today always counts: they're here.
  * (The visit is also saved by RecordVisit, so tomorrow's count includes it.)
  */
-export async function getStreak(userId: string) {
-  const [user] = await db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId));
-  const zone = user?.timezone ?? "UTC";
+async function getStreak(userId: string, zone: string) {
   const rows = await db.select({ day: userDays.day }).from(userDays).where(eq(userDays.userId, userId)).orderBy(desc(userDays.day)).limit(400);
   const days = new Set(rows.map((r) => r.day));
 
@@ -28,29 +26,25 @@ export async function getStreak(userId: string) {
   return streak;
 }
 
-/** The most recently opened course, the next lesson not done yet, and where that sits in the day plan. */
-export async function getContinue(userId: string) {
-  const [recent] = await db
-    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail })
-    .from(enrollments)
-    .innerJoin(courses, eq(courses.id, enrollments.courseId))
-    .where(eq(enrollments.userId, userId))
-    .orderBy(desc(enrollments.lastOpenedAt))
-    .limit(1);
-  if (!recent) return null;
+/** The learner's IANA timezone; their "today", greeting and streak follow it. */
+export async function getTimezone(userId: string) {
+  const [user] = await db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId));
+  return user?.timezone ?? "UTC";
+}
 
-  const plan = await getCoursePlan(userId, recent.id);
+/** "Continue": the most recently opened course (first of getMyCourses), its next lesson not done yet, and progress. */
+export function getContinue({ course, plan }: MyCourse) {
   const next = plan.lessons.find((l) => !l.done && !l.skipped) ?? null;
-  return { course: recent, next, total: plan.lessons.length, finished: plan.lessons.filter((l) => l.done).length, dayCount: plan.dayCount };
+  return { course, next, total: plan.lessons.length, finished: plan.lessons.filter((l) => l.done).length, dayCount: plan.dayCount };
 }
 
 const WEEK = 7 * 24 * 3600 * 1000;
 
 /** The four tickets on a returning learner's Today: streak, lessons finished, quiz score, time watched (last 7 days). */
-export async function getWeekStats(userId: string) {
+export async function getWeekStats(userId: string, zone: string) {
   const since = new Date(Date.now() - WEEK);
   const [streak, [watched], [quizzed], [answers], [seconds]] = await Promise.all([
-    getStreak(userId),
+    getStreak(userId, zone),
     db.select({ ids: sql<string[]>`coalesce(array_agg(${lessonWatch.lessonId}), '{}')` }).from(lessonWatch).where(and(eq(lessonWatch.userId, userId), gte(lessonWatch.watchedAt, since))),
     db.select({ ids: sql<string[]>`coalesce(array_agg(${lessonProgress.lessonId}), '{}')` }).from(lessonProgress).where(and(eq(lessonProgress.userId, userId), gte(lessonProgress.completedAt, since))),
     db
@@ -70,7 +64,7 @@ export async function getWeekStats(userId: string) {
   };
 }
 
-/** Up to six courses the learner is taking, most recent first, each with its day plan. */
+/** Up to three courses the learner is taking, most recent first, each with its day plan. */
 export async function getMyCourses(userId: string) {
   const list = await db
     .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status })
@@ -78,14 +72,14 @@ export async function getMyCourses(userId: string) {
     .innerJoin(courses, eq(courses.id, enrollments.courseId))
     .where(eq(enrollments.userId, userId))
     .orderBy(desc(enrollments.lastOpenedAt))
-    .limit(6);
-  return Promise.all(list.map(async (course) => ({ course, plan: await getCoursePlan(userId, course.id) })));
+    .limit(3);
+  const plans = await getCoursePlans(userId, list.map((c) => c.id));
+  return list.map((course) => ({ course, plan: plans.get(course.id)! }));
 }
+type MyCourse = Awaited<ReturnType<typeof getMyCourses>>[number];
 
 /** "Good morning/afternoon/evening" and today's date, in the learner's own timezone. */
-export async function getGreeting(userId: string) {
-  const [user] = await db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId));
-  const zone = user?.timezone ?? "UTC";
+export function getGreeting(zone: string) {
   const now = new Date();
   const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "numeric", hourCycle: "h23" }).format(now));
   return {

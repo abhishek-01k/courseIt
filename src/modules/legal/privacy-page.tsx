@@ -63,6 +63,11 @@ export default function PrivacyPage() {
           <strong>AI processing.</strong> To build a course, video transcripts are sent to NVIDIA Nemotron models running on Nebius Token Factory. Topic
           names may be sent to Tavily to find related reading. We send course content for these steps, not your name or email.
         </p>
+        <p>
+          <strong>Support and administration.</strong> The CourseIt team can view your account details (name, email, sign-in provider), when you were
+          active, the courses and roadmaps you take or make, and your progress, so we can answer your questions, fix problems and prevent abuse. We see
+          how many notes and quiz answers you have, not what they say. We look at this only when needed for those reasons.
+        </p>
         <p>We do not sell your personal information and we do not show ads.</p>
       </LegalSection>
 

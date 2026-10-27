@@ -6,7 +6,6 @@ import type { LandscapePalette, LandscapeScene } from "@/types/landscape";
 import type { AuthProvider } from "@/types/login";
 import type { NavLink } from "@/types/navbar";
 import type { PaceOption } from "@/types/pace-picker";
-import type { TourStep } from "@/types/product-preview";
 import type { Testimonial } from "@/types/testimonials";
 
 // PLACEHOLDERS: fill these in before launch. They appear on the Privacy and Terms pages.
@@ -141,15 +140,6 @@ export const LANDSCAPE_PALETTES: Record<LandscapeScene, LandscapePalette> = {
     moon: "#f1ead0",
   },
 };
-
-export const TOUR_STEPS: TourStep[] = [
-  { id: 1, label: "Paste a video or playlist", progress: 100 },
-  { id: 2, label: "Skip what you know", progress: 55 },
-  { id: 3, label: "Learn in focus mode", progress: 0 },
-  { id: 4, label: "Replay what you missed", progress: 0 },
-  { id: 5, label: "Pin notes to moments", progress: 0 },
-  { id: 6, label: "Follow a roadmap", progress: 0 },
-];
 
 export const LESSON_FORMATS: LessonFormat[] = ["Video", "Article"];
 

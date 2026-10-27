@@ -6,8 +6,8 @@ Paste a link. NVIDIA Nemotron models on Nebius Token Factory read the whole thin
 
 | | |
 |---|---|
-| **Live demo** | `TODO: add the deployed URL` (free to use: sign in with Google, GitHub or X) |
-| **Demo video** | `TODO: add the YouTube link` (under 3 minutes) |
+| **Live demo** | https://courseit.xyz (free to use: sign in with Google, GitHub or X) |
+| **Demo video** | https://youtu.be/dm69e4neiP0 (under 3 minutes) |
 | **Hackathon** | [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/), **Best Apps and Agents** track |
 | **Built with** | NVIDIA Nemotron 3 Ultra, Super, Nano and Nemotron 3.5 Lightning on **Nebius Token Factory**, plus Tavily |
 | **License** | [MIT](LICENSE) |
@@ -213,6 +213,6 @@ CourseIt was started from scratch for this hackathon: the first commit is from 2
 
 ## License and credits
 
-[MIT](LICENSE) © 2026 Abhishek Kumar. CourseIt is a product of [Triggerfy](https://triggerfy.xyz).
+[MIT](LICENSE) © 2026 Triggerfy Services. CourseIt is a product of [Triggerfy](https://triggerfy.xyz).
 
 Videos play in YouTube's own player and belong to their creators; CourseIt never downloads them. Made by [Abhishek Kumar](https://www.linkedin.com/in/abhishek-01k/) · [X](https://x.com/abhish_3k).

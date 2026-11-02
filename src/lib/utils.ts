@@ -1,6 +1,9 @@
 export { cn } from "cn"
 
 /** 22325 → "6h 12m", 754 → "12m" */
+/** "1 day", "3 days". */
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 export function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);

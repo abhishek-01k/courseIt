@@ -26,6 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.courseit.xyz"), // makes preview image links absolute
   title: "CourseIt",
   description: "Turn any YouTube course into one you actually finish.",
 };

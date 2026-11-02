@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
+import { plural } from "@/lib/utils";
 import BuildStatus from "./components/build-status";
 import CourseHeader from "./components/course-header";
 import CourseMenu from "./components/course-menu";
@@ -77,7 +78,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
             <div className="flex justify-between items-center">
               <h2 id="lessons-title" className="text-[1.5rem]">{userId ? "Your plan" : "The plan"}</h2>
               <span className="ml-2 align-middle text-[0.9rem] text-ink-soft tabular-nums">
-                {userId ? `${plan.lessons.filter((l) => l.done).length} / ${plan.lessons.length} lessons done` : `${plan.dayCount} days at ${plan.minutesPerDay} min a day`}
+                {userId ? `${plan.lessons.filter((l) => l.done).length} / ${plan.lessons.length} lessons done` : `${plural(plan.dayCount, "day")} at ${plan.minutesPerDay} min a day`}
               </span>
             </div>
             <LessonList slug={slug} plan={plan} building={building} />

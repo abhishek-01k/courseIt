@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
 import { cacheLife } from "next/cache";
 import { db } from "@/db";
-import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, questions, users, videos } from "@/db/schema";
+import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, placementQuestions, questions, users, videos } from "@/db/schema";
 import { packDays } from "@/lib/pace";
 
 export async function getCourseBySlug(slug: string) {
@@ -163,6 +163,32 @@ export async function getCoursePlan(userId: string, courseId: string) {
 }
 
 export type CoursePlan = Awaited<ReturnType<typeof getCoursePlan>>;
+
+/** What a shared course link shows: lessons, quizzes and the day plan at the default pace. Cached, since crawlers hit it on every share. */
+export async function getCoursePreview(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  const course = await getCourseBySlug(slug);
+  if (!course) return null;
+  const [plan, [{ quizzes }], [{ tests }]] = await Promise.all([
+    getCoursePlan("", course.id), // no user: the default daily time
+    db.select({ quizzes: count() }).from(questions).innerJoin(lessons, eq(lessons.id, questions.lessonId)).where(eq(lessons.courseId, course.id)),
+    db.select({ tests: count() }).from(placementQuestions).where(eq(placementQuestions.courseId, course.id)),
+  ]);
+  return {
+    title: course.title,
+    channel: course.channel,
+    thumbnail: course.thumbnail,
+    seconds: course.durationSeconds,
+    lessons: plan.lessons.length,
+    days: plan.dayCount,
+    minutesPerDay: plan.minutesPerDay,
+    quizzes,
+    placementTest: tests > 0,
+    videoCount: new Set(plan.lessons.map((l) => l.videoId)).size,
+    firstLessons: plan.lessons.slice(0, 4).map((l) => ({ title: l.title, thumbnail: l.thumbnail })),
+  };
+}
 
 /** The learner's notes on a lesson, in video order. */
 export function getMyNotes(userId: string, lessonId: string) {

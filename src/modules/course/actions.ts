@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { courses, enrollments } from "@/db/schema";
 import { BUILD_COURSE, inngest } from "@/inngest/client";
 import { auth } from "@/lib/auth";
+import { BUILDS_PAUSED_MESSAGE, buildsPaused } from "@/lib/builds-paused";
 import { buildPath, coursePath } from "@/lib/paths";
 import type { BuildCourseState } from "@/types/course";
 import { enroll, startCourse } from "./start";
@@ -46,6 +47,7 @@ export async function retryCourseAction(courseId: string) {
     .where(eq(courses.id, courseId));
   // Only learners taking the course, and only when something actually failed.
   if (!row || !(row.status === "failed" || (row.status === "ready" && row.error))) return;
+  if (buildsPaused()) return { error: BUILDS_PAUSED_MESSAGE };
 
   await db.update(courses).set({ status: "queued", error: null }).where(eq(courses.id, courseId));
   await inngest.send({ name: BUILD_COURSE, data: { courseId, resume: true } });

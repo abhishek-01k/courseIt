@@ -3,6 +3,7 @@ import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { courses, courseSteps, courseVideos, lessons, placementQuestions, questions, videos, videoSegments } from "@/db/schema";
 import { readVideoSegment } from "@/lib/ai";
+import { buildsPaused } from "@/lib/builds-paused";
 import { AI } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils";
 import { planLessons, writeLesson, writePlacementTest } from "@/lib/course-writer";
@@ -80,6 +81,13 @@ export const buildCourse = inngest.createFunction(
       throw new Error(
         `Missing courseId in Inngest event: ${JSON.stringify(event.data)}`
       );
+    }
+
+    // Paused: stop before any paid call. This runs again before every step, so a build already under way
+    // stops at its next step. Marked failed so the course page offers Retry, which resumes it once unpaused.
+    if (buildsPaused()) {
+      await setCourse(courseId, { status: "failed", error: "Paused for now. Press Retry later to finish building." });
+      return;
     }
 
     // Captions first: one Supadata call per video, all at once, seconds at any length. Videos with no

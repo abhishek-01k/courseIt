@@ -2,6 +2,7 @@ import { and, count, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { courses, courseVideos, enrollments, videos } from "@/db/schema";
 import { BUILD_COURSE, inngest } from "@/inngest/client";
+import { BUILDS_PAUSED_MESSAGE, buildsPaused } from "@/lib/builds-paused";
 import { COURSE_LIMITS } from "@/lib/constants";
 import { newSlug } from "@/lib/paths";
 import { formatDuration } from "@/lib/utils";
@@ -27,6 +28,8 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
 
   const [existing] = await db.select({ id: courses.id, slug: courses.slug, status: courses.status }).from(courses).where(eq(courses.sourceId, source.id));
   if (existing) {
+    // Paused: a course that still needs building can't be joined, since that would resume it.
+    if (buildsPaused() && existing.status === "failed") return { error: BUILDS_PAUSED_MESSAGE };
     await enroll(userId, existing.id);
     if (existing.status === "failed") {
       await db.update(courses).set({ status: "queued", progress: 0, error: null }).where(eq(courses.id, existing.id));
@@ -36,6 +39,8 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
     }
     return { course: existing };
   }
+
+  if (buildsPaused()) return { error: BUILDS_PAUSED_MESSAGE };
 
   const since = new Date(Date.now() - 24 * 3600 * 1000);
   const [{ built }] = await db

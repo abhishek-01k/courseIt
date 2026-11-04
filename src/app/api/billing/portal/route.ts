@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   if (!userId) redirect("/login");
 
   const [user] = await db.select({ customerId: users.dodoCustomerId }).from(users).where(eq(users.id, userId));
-  if (!user?.customerId) redirect("/pricing");
+  if (!user?.customerId) redirect("/plans");
 
   let link: string | null;
   try {

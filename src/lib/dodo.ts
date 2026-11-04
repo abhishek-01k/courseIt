@@ -3,6 +3,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 // Dodo Payments over plain fetch. DODO_PAYMENTS_ENVIRONMENT=live_mode for real money; anything else is test mode.
 const base = () => (process.env.DODO_PAYMENTS_ENVIRONMENT === "live_mode" ? "https://live.dodopayments.com" : "https://test.dodopayments.com");
 
+export class DodoError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 async function dodo<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(`${base()}${path}`, {
     method: init.method ?? "GET",
@@ -11,7 +20,7 @@ async function dodo<T>(path: string, init: { method?: string; body?: unknown } =
     signal: AbortSignal.timeout(15_000),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`Dodo ${init.method ?? "GET"} ${path} ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) throw new DodoError(`Dodo ${init.method ?? "GET"} ${path} ${res.status}: ${(await res.text()).slice(0, 300)}`, res.status);
   return (await res.json()) as T;
 }
 
@@ -42,6 +51,37 @@ export function createCheckout(input: {
       metadata: { user_id: input.userId },
     },
   });
+}
+
+export type DodoPayment = {
+  payment_id: string;
+  total_amount: number; // in the currency's smallest unit, e.g. cents
+  currency: string;
+  status: string | null; // succeeded, failed, processing, requires_*…
+  created_at: string;
+  subscription_id: string | null;
+  customer: { customer_id: string };
+  charge_type?: "new" | "renewal" | "plan_change" | "on_demand" | null;
+  refund_status?: "partial" | "full" | null;
+  card_last_four?: string | null;
+  card_network?: string | null;
+};
+
+/** Newest first, as Dodo returns them; 50 covers four years of monthly renewals. */
+export const listPayments = (customerId: string) =>
+  dodo<{ items: DodoPayment[] }>(`/payments?customer_id=${encodeURIComponent(customerId)}&page_size=50`).then((r) => r.items);
+
+export const getPayment = (id: string) => dodo<DodoPayment>(`/payments/${encodeURIComponent(id)}`);
+
+/** The invoice PDF for one payment. Dodo serves the bytes, not a link. */
+export async function getInvoicePdf(paymentId: string) {
+  const res = await fetch(`${base()}/invoices/payments/${encodeURIComponent(paymentId)}`, {
+    headers: { Authorization: `Bearer ${process.env.DODO_PAYMENTS_API_KEY ?? ""}` },
+    signal: AbortSignal.timeout(15_000),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Dodo GET invoice ${paymentId} ${res.status}`);
+  return res.arrayBuffer();
 }
 
 export const getSubscription = (id: string) => dodo<DodoSubscription>(`/subscriptions/${encodeURIComponent(id)}`);

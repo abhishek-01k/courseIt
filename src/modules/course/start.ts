@@ -2,11 +2,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { courses, courseVideos, enrollments, videos } from "@/db/schema";
 import { BUILD_COURSE, inngest } from "@/inngest/client";
-import { usageFor } from "@/lib/billing";
-import { BUILDS_PAUSED_MESSAGE, buildsPaused } from "@/lib/builds-paused";
+import { buildPriority, canRetry, usageFor } from "@/lib/billing";
+import { BUILDS_PAUSED_MESSAGE, buildsPaused, stoppedByPause } from "@/lib/builds-paused";
 import { COURSE_LIMITS } from "@/lib/constants";
 import { newSlug } from "@/lib/paths";
 import { PLANS } from "@/lib/plans";
+import type { UpgradeReason } from "@/types/course";
 import { formatDuration } from "@/lib/utils";
 import { fetchCourseSource, parseYouTubeUrl, YouTubeError } from "@/lib/youtube";
 
@@ -24,22 +25,25 @@ export const enroll = (userId: string, courseId: string) =>
  * joins it at no AI cost; failed: resumes it. New: checks the plan's monthly limit and length, saves it and starts
  * the build. Used by New course and by "paste a link" in a roadmap stage.
  */
-export async function startCourse(userId: string, url: string): Promise<{ error: string; upgrade?: boolean } | { course: Started }> {
+export async function startCourse(userId: string, url: string): Promise<{ error: string; upgrade?: UpgradeReason } | { course: Started }> {
   const source = parseYouTubeUrl(url);
   if (!source) return { error: "That doesn't look like a YouTube video or playlist link." };
 
-  const [existing] = await db.select({ id: courses.id, slug: courses.slug, status: courses.status }).from(courses).where(eq(courses.sourceId, source.id));
+  const [existing] = await db.select({ id: courses.id, slug: courses.slug, status: courses.status, error: courses.error }).from(courses).where(eq(courses.sourceId, source.id));
   if (existing) {
     // Paused: a course that still needs building can't be joined, since that would resume it.
     if (buildsPaused() && existing.status === "failed") return { error: BUILDS_PAUSED_MESSAGE };
     await enroll(userId, existing.id);
     if (existing.status === "failed") {
+      // Joining is free, but restarting the build is a retry: Free learners join it and see "Upgrade to retry".
+      const usage = await usageFor(userId);
+      if (!canRetry(usage) && !stoppedByPause(existing.error)) return { course: existing };
       await db.update(courses).set({ status: "queued", progress: 0, error: null }).where(eq(courses.id, existing.id));
       // Resume, never start over: lessons carry every learner's answers, watch time and notes.
-      await inngest.send({ name: BUILD_COURSE, data: { courseId: existing.id, resume: true } });
-      return { course: { ...existing, status: "queued" } };
+      await inngest.send({ name: BUILD_COURSE, data: { courseId: existing.id, resume: true, plan: buildPriority(usage) } });
+      return { course: { id: existing.id, slug: existing.slug, status: "queued" } };
     }
-    return { course: existing };
+    return { course: { id: existing.id, slug: existing.slug, status: existing.status } };
   }
 
   if (buildsPaused()) return { error: BUILDS_PAUSED_MESSAGE };
@@ -51,8 +55,10 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
     const up = plan.id === "free" ? PLANS.pro : plan.id === "pro" ? PLANS.max : null;
     const next = up ? `Upgrade to ${up.name} for ${up.coursesPerMonth} a month` : "A slot frees up 30 days after each build";
     return {
-      error: `You've built ${usage.used} of ${plan.coursesPerMonth} new ${plan.coursesPerMonth === 1 ? "course" : "courses"} this month on ${plan.name}. ${next}. Courses already built are always free to join.`,
-      upgrade: !!up,
+      error: plan.lifetime
+        ? `You've used your free course. ${next}. Courses already built are always free to join.`
+        : `You've built ${usage.used} of ${plan.coursesPerMonth} new ${plan.coursesPerMonth === 1 ? "course" : "courses"} this month on ${plan.name}. ${next}. Courses already built are always free to join.`,
+      upgrade: up ? "limit" : undefined,
     };
   }
 
@@ -73,7 +79,15 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
   if (!usage.unlimited && durationSeconds > usage.plan.maxHours * 3600) {
     return {
       error: `${what} is ${formatDuration(durationSeconds)} long. ${usage.plan.name} builds courses up to ${usage.plan.maxHours} hours${usage.plan.id === "max" ? "; try a shorter one" : "; upgrade for longer ones"}.`,
-      upgrade: usage.plan.id !== "max",
+      upgrade: usage.plan.id !== "max" ? "length" : undefined,
+    };
+  }
+  // Hours are what building costs, so each plan also caps the video hours built in any 30 days.
+  if (!usage.unlimited && durationSeconds / 3600 > usage.hoursLeft) {
+    const left = Math.floor(usage.hoursLeft * 10) / 10;
+    return {
+      error: `${what} is ${formatDuration(durationSeconds)} long, and you have ${left} of ${usage.plan.hoursPerMonth} hours left ${usage.plan.lifetime ? "on" : "this month on"} ${usage.plan.name}. ${usage.plan.id === "max" ? "Hours free up 30 days after each build" : "Upgrade for more hours"}.`,
+      upgrade: usage.plan.id !== "max" ? "hours" : undefined,
     };
   }
 
@@ -109,7 +123,7 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
   }
 
   try {
-    await inngest.send({ name: BUILD_COURSE, data: { courseId } });
+    await inngest.send({ name: BUILD_COURSE, data: { courseId, plan: buildPriority(usage) } });
   } catch (error) {
     console.error(error);
     await db.update(courses).set({ status: "failed", error: "Couldn't start the build." }).where(eq(courses.id, courseId));

@@ -4,12 +4,14 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { type Interval, PLANS } from "@/lib/plans";
+import { formatPrice, type Interval, PLANS, type PlanId, REGIONS, type Region } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 const ORDER = [PLANS.free, PLANS.pro, PLANS.max];
 
-export default function PlanCards() {
+// `region`: whose prices to show (see src/lib/region.ts). `current`: the signed-in learner's plan (on /plans); its
+// button turns into a label. The public page leaves it out.
+export default function PlanCards({ region, current }: { region: Region; current?: PlanId }) {
   const [interval, setBillingInterval] = useState<Interval>("month");
 
   return (
@@ -32,7 +34,7 @@ export default function PlanCards() {
       <ul className="grid w-full gap-4 md:grid-cols-3">
         {ORDER.map((plan) => {
           const featured = plan.id === "pro";
-          const price = plan.price[interval];
+          const price = plan.price[region][interval];
           return (
             <li
               key={plan.id}
@@ -47,14 +49,15 @@ export default function PlanCards() {
               </div>
               <p className="-mt-3 text-[0.92rem] text-ink-soft">{plan.tagline}</p>
               <p className="flex items-baseline gap-1.5">
-                <span className="font-display text-[2.6rem] leading-none tabular-nums">${price}</span>
+                <span className="font-display text-[2.6rem] leading-none tabular-nums">{formatPrice(price, region)}</span>
                 <span className="text-ink-soft">{price === 0 ? "forever" : interval === "month" ? "/ month" : "/ year"}</span>
               </p>
+              {price > 0 && <p className="-mt-4 text-[0.8rem] text-ink-soft">{REGIONS[region].taxNote}</p>}
               <p className="rounded-2xl bg-lime-soft/60 px-4 py-3 text-[0.95rem]">
                 <strong className="font-semibold">
-                  {plan.coursesPerMonth} new {plan.coursesPerMonth === 1 ? "course" : "courses"}
+                  {plan.lifetime ? `${plan.coursesPerMonth} free course` : `${plan.coursesPerMonth} new courses`}
                 </strong>{" "}
-                a month, up to {plan.maxHours} hours each
+                {plan.lifetime ? `up to ${plan.maxHours} hours long` : `a month, ${plan.hoursPerMonth} hours of video in total`}
               </p>
               <ul className="flex flex-1 flex-col gap-2.5 text-[0.95rem]">
                 {plan.perks.map((perk) => (
@@ -64,6 +67,13 @@ export default function PlanCards() {
                   </li>
                 ))}
               </ul>
+              {current === plan.id ? (
+                <span className={buttonVariants({ size: "lg", variant: "outline", className: "pointer-events-none w-full opacity-70" })}>Your plan</span>
+              ) : current && plan.id === "free" ? (
+                <Link href="/api/billing/portal" prefetch={false} className={buttonVariants({ size: "lg", variant: "outline", className: "w-full" })}>
+                  Manage billing
+                </Link>
+              ) : (
               <Link
                 href={plan.id === "free" ? "/new" : `/api/billing/checkout?plan=${plan.id}&interval=${interval}`}
                 prefetch={false}
@@ -71,6 +81,7 @@ export default function PlanCards() {
               >
                 {plan.id === "free" ? "Start free" : `Get ${plan.name}`}
               </Link>
+              )}
             </li>
           );
         })}

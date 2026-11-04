@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { usageFor } from "@/lib/billing";
 import { createCheckout } from "@/lib/dodo";
 import { type Interval, type PlanId, productIdFor } from "@/lib/plans";
+import { currentRegion } from "@/lib/region";
 
 // /api/billing/checkout?plan=pro&interval=month → Dodo's checkout page. Learners already paying change
 // plans in the billing portal instead, so nobody ends up with two subscriptions.
@@ -17,8 +18,10 @@ export async function GET(request: NextRequest) {
 
   const plan = request.nextUrl.searchParams.get("plan") as PlanId;
   const interval = (request.nextUrl.searchParams.get("interval") === "year" ? "year" : "month") as Interval;
-  const productId = plan === "pro" || plan === "max" ? productIdFor(plan, interval) : null;
-  if (!productId) redirect("/pricing");
+  // Same region as the prices the learner was shown. A region without its products set falls back to US prices.
+  const region = await currentRegion();
+  const productId = plan === "pro" || plan === "max" ? (productIdFor(plan, interval, region) ?? productIdFor(plan, interval, "us")) : null;
+  if (!productId) redirect("/plans");
 
   const usage = await usageFor(userId);
   if (usage.plan.id !== "free" && usage.canManage) redirect("/api/billing/portal");
@@ -31,12 +34,12 @@ export async function GET(request: NextRequest) {
       productId,
       customer: user?.dodoCustomerId ? { customer_id: user.dodoCustomerId } : { email: user?.email ?? "", name: user?.name ?? undefined },
       returnUrl: `${origin}/api/billing/return`,
-      cancelUrl: `${origin}/pricing`,
+      cancelUrl: `${origin}/plans`,
       userId,
     }));
   } catch (error) {
     console.error(error);
     url = null;
   }
-  redirect(url ?? "/pricing?error=checkout");
+  redirect(url ?? "/plans?error=checkout");
 }

@@ -18,16 +18,16 @@ export function Toaster() {
 
 /**
  * Runs a server action from the client. A returned `{ error }` and a failed request both show as a toast
- * (with a "See plans" button when it also says `upgrade`);
+ * (with a "See plans" button when it also says `upgrade`; the course actions redirect to /plans themselves);
  * `fail` says what didn't happen. Redirects pass through. Returns the action's result, or null if it threw.
  */
 export async function act<T>(run: () => Promise<T>, fail: string): Promise<T | null> {
   try {
     const result = await run();
     const { error, upgrade } = (result as { error?: string; upgrade?: boolean } | undefined) ?? {};
-    // act() runs outside React, so no router here: a full load to /pricing is fine.
+    // act() runs outside React, so no router here: a full load to /plans is fine.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    if (error) toast.error(error, upgrade ? { duration: 10_000, action: { label: "See plans", onClick: () => window.location.assign("/pricing") } } : undefined);
+    if (error) toast.error(error, upgrade ? { duration: 10_000, action: { label: "See plans", onClick: () => window.location.assign("/plans") } } : undefined);
     return result;
   } catch (error) {
     unstable_rethrow(error);

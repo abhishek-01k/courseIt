@@ -20,6 +20,7 @@ export const LEGAL = {
 export const LEGAL_LINKS: NavLink[] = [
   { id: 1, title: "Privacy", href: "/privacy" },
   { id: 2, title: "Terms", href: "/terms" },
+  { id: 3, title: "Refunds", href: "/refunds" },
 ];
 
 // Brand marks from Simple Icons (CC0), drawn in the current text colour.

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
+import { canRetry, usageFor } from "@/lib/billing";
+import { stoppedByPause } from "@/lib/builds-paused";
 import { plural } from "@/lib/utils";
 import BuildStatus from "./components/build-status";
 import CourseHeader from "./components/course-header";
@@ -35,6 +37,8 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   if (userId) after(() => touchEnrollment(userId, id));
 
   const building = course.status !== "ready" && course.status !== "failed";
+  const retryable = Boolean(userId) && (course.status === "failed" || (course.status === "ready" && !!course.error));
+  const mayRetry = retryable && userId ? stoppedByPause(course.error) || canRetry(await usageFor(userId)) : false;
 
   return (
     <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 pt-8 pb-20 sm:px-6">
@@ -54,10 +58,10 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       {building && <BuildStatus steps={steps} now={new Date()} />}
 
       {userId && course.status === "failed" && (
-        <RetryBanner courseId={course.id} message="This course stopped building partway, usually because the AI was busy. Retry picks up where it stopped." />
+        <RetryBanner canRetry={mayRetry} courseId={course.id} message="This course stopped building partway, usually because the AI was busy. Retry picks up where it stopped." />
       )}
       {userId && course.status === "ready" && course.error && (
-        <RetryBanner courseId={course.id} message={`${course.error} The rest of the course is ready to use.`} />
+        <RetryBanner canRetry={mayRetry} courseId={course.id} message={`${course.error} The rest of the course is ready to use.`} />
       )}
 
       {plan.lessons.length > 0 && (

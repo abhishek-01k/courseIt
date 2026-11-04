@@ -15,8 +15,8 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const read = async (searchParams: Search) => {
   const { tab, q } = await searchParams;
-  // Roadmaps open first; ?tab=courses shows courses.
-  return { tab: (tab === "courses" ? "courses" : "roadmaps") as Tab, q: (typeof q === "string" ? q : "").trim().slice(0, 80) };
+  // Courses open first; ?tab=roadmaps shows roadmaps.
+  return { tab: (tab === "roadmaps" ? "roadmaps" : "courses") as Tab, q: (typeof q === "string" ? q : "").trim().slice(0, 80) };
 };
 
 const href = (tab: Tab, q: string) => `/community?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
@@ -24,8 +24,8 @@ const href = (tab: Tab, q: string) => `/community?tab=${tab}${q ? `&q=${encodeUR
 async function Tabs({ searchParams }: { searchParams: Search }) {
   const [{ tab, q }, courses, roadmaps] = await Promise.all([read(searchParams), countCommunityCourses(), countPublishedRoadmaps()]);
   const tabs = [
-    { id: "roadmaps" as const, label: "Roadmaps", n: roadmaps },
     { id: "courses" as const, label: "Courses", n: courses },
+    { id: "roadmaps" as const, label: "Roadmaps", n: roadmaps },
   ];
   return (
     <div className="flex flex-wrap items-center gap-3">

@@ -1,7 +1,7 @@
 import Landscape from "@/components/landscape";
 import Pill from "@/components/pill";
 import { BUILDS_PAUSED_MESSAGE, buildsPaused } from "@/lib/builds-paused";
-import CourseUrlForm from "@/modules/dashboard/components/course-url-form";
+import BuildCourseForm from "@/modules/dashboard/components/build-course-form";
 
 // "New course" in the sidebar: one question, the link. Building opens the full-screen onboarding.
 export default function NewCoursePage() {
@@ -17,8 +17,7 @@ export default function NewCoursePage() {
           </h1>
           <p className="text-ink-soft">Any YouTube video or playlist, from a 20-minute talk to a 6-hour course.</p>
           {buildsPaused() && <p className="rounded-2xl bg-lime-soft px-4 py-2.5 text-[0.92rem] text-moss">{BUILDS_PAUSED_MESSAGE}</p>}
-          <CourseUrlForm />
-          <span className="font-mono text-label tracking-[0.07em] text-ink-soft uppercase">Already built by someone? It opens instantly</span>
+          <BuildCourseForm caption="Already built by someone? It opens instantly" />
         </div>
       </section>
     </div>

@@ -5,5 +5,5 @@ export { auth as proxy } from "@/lib/auth";
 // open signed out, and those pages ask visitors to sign in for anything that saves. A course's link-preview
 // image (/courses/<slug>/opengraph-image-…) is left out too: crawlers fetch it signed out.
 export const config = {
-  matcher: ["/login", "/dashboard/:path*", "/courses", "/courses/:slug/:lesson((?!opengraph-image).*)", "/notes/:path*", "/community/:path*", "/roadmaps", "/new", "/build/:path*", "/settings", "/admin/:path*"],
+  matcher: ["/login", "/dashboard/:path*", "/courses", "/courses/:slug/:lesson((?!opengraph-image).*)", "/notes/:path*", "/community/:path*", "/roadmaps", "/new", "/build/:path*", "/settings", "/plans", "/support", "/admin/:path*"],
 };

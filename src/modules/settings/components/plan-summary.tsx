@@ -21,7 +21,14 @@ export default async function PlanSummary() {
         <p className="text-[1.1rem] font-medium">
           {usage.unlimited ? "Admin · unlimited" : plan.name}{" "}
           <span className="text-ink-soft">
-            · {usage.unlimited ? usage.used : `${usage.used} of ${plan.coursesPerMonth}`} new {plan.coursesPerMonth === 1 && !usage.unlimited ? "course" : "courses"} in the last 30 days
+            ·{" "}
+            {usage.unlimited
+              ? `${usage.used} new courses, ${usage.hoursUsed} hours in the last 30 days`
+              : plan.lifetime
+                ? usage.left > 0
+                  ? "your free course is still to build"
+                  : "free course used"
+                : `${usage.used} of ${plan.coursesPerMonth} new courses, ${usage.hoursUsed} of ${plan.hoursPerMonth} hours in the last 30 days`}
           </span>
         </p>
         <p className="text-[0.92rem] text-ink-soft">
@@ -36,7 +43,7 @@ export default async function PlanSummary() {
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         {plan.id !== "max" && !usage.unlimited && (
-          <Link href="/pricing" className={buttonVariants({ size: "lg" })}>
+          <Link href="/plans" className={buttonVariants({ size: "lg" })}>
             Upgrade
           </Link>
         )}

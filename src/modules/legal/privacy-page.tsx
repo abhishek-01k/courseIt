@@ -78,6 +78,7 @@ export default function PrivacyPage() {
           <li>Sign-in providers: Google, GitHub and X.</li>
           <li>AI, captions and search: Nebius (Token Factory), Google (Gemini), Supadata and Tavily.</li>
           <li>Payments: Dodo Payments, which receives your name and email and handles your card details. We never see or store card numbers.</li>
+          <li>Email: Resend, which delivers account emails such as &quot;your course is ready&quot; and billing notices.</li>
           <li>Hosting and storage providers that run our website and database.</li>
         </ul>
         <p>
@@ -128,6 +129,11 @@ export default function PrivacyPage() {
         <p>
           You can ask to see, correct, export or delete your personal information by emailing {LEGAL.contactEmail}. Depending on where you live, you may
           have further rights under local law, including the right to complain to a data protection authority.
+        </p>
+        <p>
+          <strong>In the EU and UK:</strong> we use your account details and learning data to provide the service you signed up for (performance of a
+          contract), and server logs to keep it secure (legitimate interests). Some of the providers above process data outside your country; they do so
+          under their own safeguards, such as standard contractual clauses. We reply to every request within 30 days.
         </p>
       </LegalSection>
 

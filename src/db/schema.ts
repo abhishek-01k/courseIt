@@ -20,6 +20,8 @@ export const users = pgTable("user", {
   planCancelsAtRenewal: boolean("plan_cancels_at_renewal").notNull().default(false),
   dodoCustomerId: text("dodo_customer_id").unique(),
   dodoSubscriptionId: text("dodo_subscription_id").unique(),
+  // Set when an email to this address bounced or was marked as spam (Resend webhook). We stop emailing it.
+  emailSuppressedAt: timestamp("email_suppressed_at", { mode: "date" }),
 });
 
 export const accounts = pgTable(
@@ -352,6 +354,25 @@ export const roadmapFollows = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.roadmapId] }), index("roadmap_follow_roadmap_idx").on(t.roadmapId, t.createdAt)],
+);
+
+// Every email we send (src/inngest/send-email.ts). `key` names one email ("course-ready:<course id>"), so a
+// retry or a repeated event never sends it twice; Resend's webhook fills in delivered / bounced / complained.
+export const emailLog = pgTable(
+  "email_log",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    key: text("key").notNull().unique(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    template: text("template").notNull(),
+    to: text("to"),
+    status: text("status").$type<"sending" | "sent" | "delivered" | "bounced" | "complained" | "skipped" | "failed">().notNull().default("sending"),
+    detail: text("detail"), // why it was skipped or failed
+    resendId: text("resend_id").unique(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("email_log_user_idx").on(t.userId, t.createdAt)],
 );
 
 export const coursesRelations = relations(courses, ({ many }) => ({ videos: many(courseVideos), lessons: many(lessons) }));

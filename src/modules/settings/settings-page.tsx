@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import BillingHistory from "./components/billing-history";
 import PacePicker from "./components/pace-picker";
 import PlanSummary from "./components/plan-summary";
 
@@ -21,14 +22,6 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto flex w-full max-w-[920px] flex-col gap-8 px-4 pt-8 pb-20 sm:px-6">
       <PageHeader label="Settings" title="Learn at" accent="your pace." />
-      <section aria-labelledby="plan-title" className="flex flex-col gap-3">
-        <h2 id="plan-title" className="text-h3 font-medium">
-          Plan
-        </h2>
-        <Suspense fallback={<Skeleton className="h-24 rounded-card" />}>
-          <PlanSummary />
-        </Suspense>
-      </section>
       <section aria-labelledby="daily-title" className="flex flex-col gap-3">
         <div>
           <h2 id="daily-title" className="text-h3 font-medium">
@@ -38,6 +31,25 @@ export default function SettingsPage() {
         </div>
         <Suspense fallback={<Skeleton className="h-36 rounded-card" />}>
           <DailyTime />
+        </Suspense>
+      </section>
+      <section aria-labelledby="plan-title" className="flex flex-col gap-3">
+        <h2 id="plan-title" className="text-h3 font-medium">
+          Plan
+        </h2>
+        <Suspense fallback={<Skeleton className="h-24 rounded-card" />}>
+          <PlanSummary />
+        </Suspense>
+      </section>
+      <section aria-labelledby="billing-title" className="flex flex-col gap-3">
+        <div>
+          <h2 id="billing-title" className="text-h3 font-medium">
+            Billing history
+          </h2>
+          <p className="text-[0.92rem] text-ink-soft">Every payment and its invoice. To change your card or cancel, use Manage billing above.</p>
+        </div>
+        <Suspense fallback={<Skeleton className="h-32 rounded-card" />}>
+          <BillingHistory />
         </Suspense>
       </section>
     </div>

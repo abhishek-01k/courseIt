@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/users", title: "Learners" },
   { href: "/admin/courses", title: "Courses" },
   { href: "/admin/roadmaps", title: "Roadmaps" },
+  { href: "/admin/announcements", title: "Announcements" },
 ];
 
 // Overview matches /admin only; the others also light up on their detail pages.

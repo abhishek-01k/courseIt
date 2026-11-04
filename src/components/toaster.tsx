@@ -17,14 +17,15 @@ export function Toaster() {
 }
 
 /**
- * Runs a server action from the client. A returned `{ error }` and a failed request both show as a toast;
+ * Runs a server action from the client. A returned `{ error }` and a failed request both show as a toast
+ * (with a "See plans" button when it also says `upgrade`);
  * `fail` says what didn't happen. Redirects pass through. Returns the action's result, or null if it threw.
  */
 export async function act<T>(run: () => Promise<T>, fail: string): Promise<T | null> {
   try {
     const result = await run();
-    const error = (result as { error?: string } | undefined)?.error;
-    if (error) toast.error(error);
+    const { error, upgrade } = (result as { error?: string; upgrade?: boolean } | undefined) ?? {};
+    if (error) toast.error(error, upgrade ? { duration: 10_000, action: { label: "See plans", onClick: () => window.location.assign("/pricing") } } : undefined);
     return result;
   } catch (error) {
     unstable_rethrow(error);

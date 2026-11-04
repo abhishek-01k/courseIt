@@ -11,8 +11,11 @@ export default function TermsPage() {
     >
       <LegalSection title="1. The service">
         <p>
-          CourseIt turns YouTube videos and playlists into courses with lessons, quizzes and a study plan. It is operated by {LEGAL.operator}. CourseIt is
-          in beta and free to use; features may change, and we may add paid plans in the future with clear notice before you are charged.
+          CourseIt turns YouTube videos and playlists into courses with lessons, quizzes and a study plan. It is operated by {LEGAL.operator}. Joining a
+          course that has already been built is free. Building new courses is limited by plan: Free includes a small monthly allowance, and paid plans
+          (Pro and Max, see <Link href="/pricing">Pricing</Link>) are billed monthly or yearly through Dodo Payments, our merchant of record, until you
+          cancel. Cancelling stops the next renewal; you keep your plan until the end of the period you paid for. Features and limits may change, with
+          notice before any price change affects you.
         </p>
       </LegalSection>
 

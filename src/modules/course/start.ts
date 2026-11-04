@@ -1,10 +1,12 @@
-import { and, count, eq, gte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { courses, courseVideos, enrollments, videos } from "@/db/schema";
 import { BUILD_COURSE, inngest } from "@/inngest/client";
+import { usageFor } from "@/lib/billing";
 import { BUILDS_PAUSED_MESSAGE, buildsPaused } from "@/lib/builds-paused";
 import { COURSE_LIMITS } from "@/lib/constants";
 import { newSlug } from "@/lib/paths";
+import { PLANS } from "@/lib/plans";
 import { formatDuration } from "@/lib/utils";
 import { fetchCourseSource, parseYouTubeUrl, YouTubeError } from "@/lib/youtube";
 
@@ -19,10 +21,10 @@ export const enroll = (userId: string, courseId: string) =>
 
 /**
  * A pasted YouTube link → a course the learner is enrolled in. Already built (or building) by anyone:
- * joins it at no AI cost; failed: resumes it. New: checks the daily limit and length, saves it and starts
+ * joins it at no AI cost; failed: resumes it. New: checks the plan's monthly limit and length, saves it and starts
  * the build. Used by New course and by "paste a link" in a roadmap stage.
  */
-export async function startCourse(userId: string, url: string): Promise<{ error: string } | { course: Started }> {
+export async function startCourse(userId: string, url: string): Promise<{ error: string; upgrade?: boolean } | { course: Started }> {
   const source = parseYouTubeUrl(url);
   if (!source) return { error: "That doesn't look like a YouTube video or playlist link." };
 
@@ -42,13 +44,16 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
 
   if (buildsPaused()) return { error: BUILDS_PAUSED_MESSAGE };
 
-  const since = new Date(Date.now() - 24 * 3600 * 1000);
-  const [{ built }] = await db
-    .select({ built: count() })
-    .from(courses)
-    .where(and(eq(courses.createdBy, userId), gte(courses.createdAt, since)));
-  if (built >= COURSE_LIMITS.newCoursesPerDay) {
-    return { error: `You can build ${COURSE_LIMITS.newCoursesPerDay} new courses a day. Courses already in Community are always open.` };
+  // Building is what costs money, so it's what each plan limits (src/lib/plans.ts).
+  const usage = await usageFor(userId);
+  if (usage.left <= 0) {
+    const { plan } = usage;
+    const up = plan.id === "free" ? PLANS.pro : plan.id === "pro" ? PLANS.max : null;
+    const next = up ? `Upgrade to ${up.name} for ${up.coursesPerMonth} a month` : "A slot frees up 30 days after each build";
+    return {
+      error: `You've built ${usage.used} of ${plan.coursesPerMonth} new ${plan.coursesPerMonth === 1 ? "course" : "courses"} this month on ${plan.name}. ${next}. Courses already built are always free to join.`,
+      upgrade: !!up,
+    };
   }
 
   let found;
@@ -61,9 +66,15 @@ export async function startCourse(userId: string, url: string): Promise<{ error:
   }
 
   const durationSeconds = found.videos.reduce((total, v) => total + v.durationSeconds, 0);
+  const what = source.type === "playlist" ? "That playlist" : "That video";
   if (durationSeconds > COURSE_LIMITS.maxTotalSeconds) {
-    const what = source.type === "playlist" ? "That playlist" : "That video";
     return { error: `${what} is ${formatDuration(durationSeconds)} long. We support up to ${COURSE_LIMITS.maxTotalSeconds / 3600} hours for now; try a shorter one.` };
+  }
+  if (!usage.unlimited && durationSeconds > usage.plan.maxHours * 3600) {
+    return {
+      error: `${what} is ${formatDuration(durationSeconds)} long. ${usage.plan.name} builds courses up to ${usage.plan.maxHours} hours${usage.plan.id === "max" ? "; try a shorter one" : "; upgrade for longer ones"}.`,
+      upgrade: usage.plan.id !== "max",
+    };
   }
 
   // neon-http has no interactive transactions; batch runs these in one transaction.

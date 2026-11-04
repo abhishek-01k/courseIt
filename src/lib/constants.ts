@@ -14,7 +14,7 @@ export const LEGAL = {
   parent: { name: "Triggerfy", url: "https://triggerfy.xyz" }, // CourseIt is a Triggerfy product
   contactEmail: "hello@triggerfy.xyz",
   jurisdiction: "India",
-  lastUpdated: "October 27, 2026",
+  lastUpdated: "November 4, 2026",
 };
 
 export const LEGAL_LINKS: NavLink[] = [
@@ -52,6 +52,7 @@ export const FOOTER_COLUMNS: { title: string; links: NavLink[] }[] = [
       { id: 2, title: "Courses", href: "/#courses" },
       { id: 3, title: "How it works", href: "/#how-it-works" },
       { id: 4, title: "Community", href: "/community" },
+      { id: 5, title: "Pricing", href: "/pricing" },
     ],
   },
   {
@@ -75,6 +76,7 @@ export const NAV_LINKS: NavLink[] = [
   { id: 1, title: "Features", href: "/#features" },
   { id: 2, title: "Courses", href: "/#courses" },
   { id: 3, title: "How it works", href: "/#how-it-works" },
+  { id: 4, title: "Pricing", href: "/pricing" },
 ];
 
 // Signed-in sidebar. Each href also needs a matcher entry in src/proxy.ts.
@@ -201,9 +203,8 @@ export const TESTIMONIALS: Testimonial[] = [
 
 // Protect the AI bill while keeping CourseIt free. Courses someone already built never count.
 export const COURSE_LIMITS = {
-  newCoursesPerDay: 3,
   maxPlaylistVideos: 200,
-  maxTotalSeconds: 20 * 3600, // playlists are planned video by video, so long ones stay reliable
+  maxTotalSeconds: 20 * 3600, // hard ceiling on every plan (plans set their own caps in src/lib/plans.ts); playlists are planned video by video, so long ones stay reliable
 };
 
 // AI models. Captions come from Supadata; Gemini only watches videos that have none. Every decision and

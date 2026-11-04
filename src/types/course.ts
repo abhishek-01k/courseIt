@@ -1,4 +1,4 @@
-export type BuildCourseState = { error?: string };
+export type BuildCourseState = { error?: string; upgrade?: boolean }; // upgrade: a plan limit was hit, offer the plans
 
 export type CourseTileData = {
   id: string;

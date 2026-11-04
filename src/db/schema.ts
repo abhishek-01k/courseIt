@@ -13,6 +13,13 @@ export const users = pgTable("user", {
   image: text("image"),
   timezone: text("timezone"), // the learner's IANA zone, so "today" and streaks follow their clock
   minutesPerDay: integer("minutes_per_day").notNull().default(90), // daily learning time (Settings); every course's days are packed from it
+  // Billing, kept in step with Dodo Payments by its webhooks (src/lib/billing.ts decides what the learner gets).
+  plan: text("plan").$type<"free" | "pro" | "max">().notNull().default("free"),
+  planStatus: text("plan_status"), // Dodo's subscription status: active, on_hold, cancelled, expired…
+  planRenewsAt: timestamp("plan_renews_at", { mode: "date" }), // end of the paid period
+  planCancelsAtRenewal: boolean("plan_cancels_at_renewal").notNull().default(false),
+  dodoCustomerId: text("dodo_customer_id").unique(),
+  dodoSubscriptionId: text("dodo_subscription_id").unique(),
 });
 
 export const accounts = pgTable(

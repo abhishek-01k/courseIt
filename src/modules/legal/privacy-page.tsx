@@ -77,6 +77,7 @@ export default function PrivacyPage() {
         <ul className="flex flex-col gap-2">
           <li>Sign-in providers: Google, GitHub and X.</li>
           <li>AI, captions and search: Nebius (Token Factory), Google (Gemini), Supadata and Tavily.</li>
+          <li>Payments: Dodo Payments, which receives your name and email and handles your card details. We never see or store card numbers.</li>
           <li>Hosting and storage providers that run our website and database.</li>
         </ul>
         <p>

@@ -6,14 +6,11 @@ import StatusBadge from "@/components/status-badge";
 import Thumbnail from "@/components/thumbnail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireAdmin } from "@/lib/admin";
-import { coursePath, roadmapPath } from "@/lib/paths";
-import { initials, timeAgo } from "@/lib/utils";
+import { roadmapPath } from "@/lib/paths";
+import { timeAgo } from "@/lib/utils";
+import { ActivityCalendar } from "./components/charts";
+import { Avatar, hours, n, pct, row, Section, statusTone, Tiles } from "./components/ui";
 import { getAdminUser } from "./queries";
-
-const card = "flex flex-col gap-3 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)]";
-const row = "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[14px] bg-paper p-2 pr-3 hover:bg-lime-soft/40";
-const TONE = { ready: "ok", failed: "err" } as const;
-const statusTone = (s: string) => TONE[s as keyof typeof TONE] ?? "warn";
 
 async function Learner({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
@@ -26,30 +23,17 @@ async function Learner({ params }: { params: Promise<{ id: string }> }) {
     ["Signs in with", u.providers ?? "—"],
     ["First seen", u.firstSeen ?? "—"],
     ["Last active", u.lastSeen ?? "—"],
-    ["Days active", String(u.days)],
     ["Timezone", u.timezone ?? "—"],
     ["Daily time", `${u.minutesPerDay} min`],
-    ["Notes · quiz answers", `${u.noteCount} · ${u.answerCount}`],
   ];
 
   return (
     <>
       <header className="flex flex-wrap items-center gap-4">
-        <Thumbnail
-          src={u.image}
-          width={64}
-          height={64}
-          referrerPolicy="no-referrer"
-          className="size-16 shrink-0 rounded-full"
-          fallback={
-            <span aria-hidden="true" className="flex size-16 shrink-0 items-center justify-center rounded-full bg-lime-soft font-display text-[1.3rem] text-pill-ink">
-              {initials(u.name)}
-            </span>
-          }
-        />
+        <Avatar name={u.name} image={u.image} size={64} />
         <div className="flex min-w-0 flex-col gap-1">
           <span className="font-mono text-label tracking-[0.07em] text-ink-soft uppercase">Learner</span>
-          <h1 className="truncate text-[clamp(1.8rem,4vw,2.4rem)] leading-[1.08]">{u.name ?? "No name"}</h1>
+          <h2 className="truncate text-[clamp(1.6rem,3.6vw,2.2rem)] leading-[1.08]">{u.name ?? "No name"}</h2>
         </div>
       </header>
 
@@ -62,21 +46,43 @@ async function Learner({ params }: { params: Promise<{ id: string }> }) {
         ))}
       </dl>
 
-      <section aria-labelledby="taking-title" className={card}>
-        <h2 id="taking-title" className="text-h3 font-medium">
-          Enrolled courses <span className="text-ink-soft tabular-nums">{u.taking.length}</span>
-        </h2>
+      <Tiles
+        tiles={[
+          { label: "Streak", value: u.streak.current ? `${u.streak.current}d` : "—", note: `best ${u.streak.best}d` },
+          { label: "Days active", value: u.days },
+          { label: "Watched", value: hours(u.seconds), note: `${n(u.lessons)} lessons done` },
+          { label: "Quiz", value: pct(u.answers ? u.correct / u.answers : null), note: `${n(u.answers)} answers` },
+          { label: "Skipped", value: u.skips, note: "lessons, from placement tests" },
+          { label: "Notes", value: u.notes, note: "counted, never read" },
+        ]}
+      />
+
+      <Section title="Activity">
+        <ActivityCalendar days={u.activeDays} />
+      </Section>
+
+      <Section title="Enrolled courses" count={u.taking.length}>
         {u.taking.length ? (
           <ul className="flex flex-col gap-2">
             {u.taking.map((c) => (
               <li key={c.id}>
-                <Link href={coursePath(c.slug)} className={row}>
+                <Link href={`/admin/courses/${c.id}`} className={row}>
                   <span className="relative aspect-video w-16 shrink-0 overflow-hidden rounded-[10px] bg-lime-soft">
                     <Thumbnail src={c.thumbnail} fill sizes="64px" className="object-cover" />
                   </span>
-                  <span className="min-w-0 flex-[1_1_200px] truncate font-medium">{c.title}</span>
+                  <span className="flex min-w-0 flex-[1_1_220px] flex-col gap-1">
+                    <span className="truncate font-medium">{c.title}</span>
+                    <span className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-line" aria-hidden="true">
+                      <span className="block h-full rounded-full bg-moss" style={{ width: `${c.pct}%` }} />
+                    </span>
+                  </span>
                   <span className="text-[0.85rem] text-ink-soft tabular-nums">
-                    {c.pct}% done · opened {timeAgo(c.lastOpenedAt)} · enrolled {timeAgo(c.enrolledAt)}
+                    {c.pct}% · {c.done}/{c.total} lessons{c.skipped ? ` · ${c.skipped} skipped` : ""} · {hours(c.seconds)} watched · quiz{" "}
+                    {pct(c.answers ? c.correct / c.answers : null)}
+                    {c.placement ? ` · placement ${c.placement.score}/${c.placement.total}` : ""}
+                  </span>
+                  <span className="w-full text-[0.8rem] text-ink-soft sm:w-auto">
+                    opened {timeAgo(c.lastOpenedAt)} · enrolled {timeAgo(c.enrolledAt)}
                   </span>
                 </Link>
               </li>
@@ -85,17 +91,14 @@ async function Learner({ params }: { params: Promise<{ id: string }> }) {
         ) : (
           <p className="text-ink-soft">Not enrolled in any course.</p>
         )}
-      </section>
+      </Section>
 
-      <section aria-labelledby="built-title" className={card}>
-        <h2 id="built-title" className="text-h3 font-medium">
-          Courses they built <span className="text-ink-soft tabular-nums">{u.built.length}</span>
-        </h2>
+      <Section title="Courses they built" count={u.built.length}>
         {u.built.length ? (
           <ul className="flex flex-col gap-2">
             {u.built.map((c) => (
               <li key={c.id}>
-                <Link href={coursePath(c.slug)} className={row}>
+                <Link href={`/admin/courses/${c.id}`} className={row}>
                   <span className="min-w-0 flex-[1_1_200px] truncate font-medium">{c.title}</span>
                   <StatusBadge tone={statusTone(c.status)}>{c.status}</StatusBadge>
                   <span className="text-[0.85rem] text-ink-soft">{timeAgo(c.createdAt)}</span>
@@ -107,15 +110,12 @@ async function Learner({ params }: { params: Promise<{ id: string }> }) {
         ) : (
           <p className="text-ink-soft">Hasn&apos;t built a course.</p>
         )}
-      </section>
+      </Section>
 
-      <section aria-labelledby="roadmaps-title" className={card}>
-        <h2 id="roadmaps-title" className="text-h3 font-medium">
-          Roadmaps
-        </h2>
-        {u.owned.length + u.enrolledIn.length ? (
+      <Section title="Roadmaps">
+        {u.owned.length + u.following.length ? (
           <ul className="flex flex-col gap-2">
-            {[...u.owned.map((r) => ({ ...r, role: "Made" })), ...u.enrolledIn.map((r) => ({ ...r, role: "Enrolled" }))].map((r) => (
+            {[...u.owned.map((r) => ({ ...r, role: "Made" })), ...u.following.map((r) => ({ ...r, role: "Following" }))].map((r) => (
               <li key={`${r.role}-${r.id}`}>
                 <Link href={roadmapPath(r.slug)} className={row}>
                   <span className="min-w-0 flex-[1_1_200px] truncate font-medium">{r.title}</span>
@@ -128,21 +128,21 @@ async function Learner({ params }: { params: Promise<{ id: string }> }) {
         ) : (
           <p className="text-ink-soft">No roadmaps.</p>
         )}
-      </section>
+      </Section>
     </>
   );
 }
 
 export default function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 pt-8 pb-20 sm:px-6">
-      <Link href="/admin" className="inline-flex items-center gap-2 self-start text-[0.9rem] text-ink-soft hover:text-ink">
+    <>
+      <Link href="/admin/users" className="inline-flex items-center gap-2 self-start text-[0.9rem] text-ink-soft hover:text-ink">
         <ArrowLeft aria-hidden="true" className="size-4" />
         All learners
       </Link>
       <Suspense fallback={<Skeleton className="h-96 rounded-card" />}>
         <Learner params={params} />
       </Suspense>
-    </div>
+    </>
   );
 }

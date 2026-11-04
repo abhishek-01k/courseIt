@@ -1,6 +1,6 @@
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { attempts, courses, enrollments, lessonProgress, lessonWatch, notes, roadmapFollows, roadmaps, userDays, users } from "@/db/schema";
+import { attempts, courses, enrollments, lessonProgress, lessonWatch, notes, notifications, roadmapFollows, roadmaps, userDays, users } from "@/db/schema";
 import { getCoursePlans } from "@/modules/course/queries";
 
 const dayKey = (date: Date, zone: string) => new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(date);
@@ -90,13 +90,14 @@ export function getGreeting(zone: string) {
 
 /** Numbers next to My courses, Roadmaps and Notes in the sidebar, keyed by their link. */
 export async function getSidebarCounts(userId: string) {
-  const [[courseCount], [roadmapCount], [noteCount]] = await Promise.all([
+  const [[courseCount], [roadmapCount], [noteCount], [unread]] = await Promise.all([
     db.select({ n: count() }).from(enrollments).where(eq(enrollments.userId, userId)),
     db
       .select({ n: sql<number>`(select count(*) from ${roadmaps} where ${roadmaps.ownerId} = ${userId}) + (select count(*) from ${roadmapFollows} where ${roadmapFollows.userId} = ${userId})`.mapWith(Number) })
       .from(users)
       .where(eq(users.id, userId)),
     db.select({ n: count() }).from(notes).where(eq(notes.userId, userId)),
+    db.select({ n: count() }).from(notifications).where(and(eq(notifications.userId, userId), isNull(notifications.readAt))),
   ]);
-  return { "/courses": courseCount.n, "/roadmaps": roadmapCount.n, "/notes": noteCount.n };
+  return { "/courses": courseCount.n, "/roadmaps": roadmapCount.n, "/notes": noteCount.n, "/inbox": unread.n };
 }

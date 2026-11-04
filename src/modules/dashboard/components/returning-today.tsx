@@ -12,7 +12,7 @@ import type {
   getMyCourses,
   getWeekStats,
 } from "../queries";
-import CourseUrlForm from "./course-url-form";
+import BuildCourseForm from "./build-course-form";
 
 type Props = {
   firstName: string | null;
@@ -134,7 +134,7 @@ export default function ReturningToday({
         <h2 id="next-title" className="text-h3 font-medium">
           What do you want to learn next?
         </h2>
-        <CourseUrlForm />
+        <BuildCourseForm />
       </section>
 
       <section aria-labelledby="mine-title" className="flex flex-col gap-4">

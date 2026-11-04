@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 
 // ADMIN_EMAILS: comma-separated sign-in emails that can open /admin and publish roadmaps to Community.
-const admins = () =>
+export const admins = () =>
   (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())

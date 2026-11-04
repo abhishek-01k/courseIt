@@ -164,7 +164,10 @@ export async function addCourseLinkAction(stageId: string, _prev: RoadmapFormSta
   const stage = await ownedStage(userId, stageId);
   if (!stage) return NOT_YOURS;
   const result = await startCourse(userId, String(formData.get("url") ?? ""));
-  if ("error" in result) return result;
+  if ("error" in result) {
+    if (result.upgrade) redirect(`/plans?reason=${result.upgrade}`);
+    return { error: result.error };
+  }
   await place(stage.roadmapId, stageId, result.course.id);
   refresh();
   return { ok: true };

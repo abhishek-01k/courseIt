@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Crown, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { ChevronDown, Crown, LifeBuoy, LogOut, Settings, ShieldCheck } from "lucide-react";
 import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -60,10 +60,13 @@ export default function UserMenu({ name, image, plan, admin }: UserMenuProps) {
             Admin
           </DropdownMenuItem>
         )}
-        {/* ponytail: no Pricing page yet; enable when it ships. */}
-        <DropdownMenuItem disabled className={item}>
+        <DropdownMenuItem render={<Link href="/plans" />} className={item}>
           <Crown className="size-[18px]" />
           Pricing
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/support" />} className={item}>
+          <LifeBuoy className="size-[18px]" />
+          Support
         </DropdownMenuItem>
         <DropdownMenuCheckboxItem
           checked={dark}

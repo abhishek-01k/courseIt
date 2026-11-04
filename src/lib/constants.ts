@@ -1,4 +1,4 @@
-import { BookOpen, Home, Map as MapIcon, NotebookPen, Users } from "lucide-react";
+import { Bell, BookOpen, Home, Map as MapIcon, NotebookPen, Users } from "lucide-react";
 import type { AppNavLink } from "@/types/app-sidebar";
 import type { LessonFormat } from "@/types/format-toggle";
 import type { HowStep } from "@/types/how-it-works";
@@ -14,12 +14,13 @@ export const LEGAL = {
   parent: { name: "Triggerfy", url: "https://triggerfy.xyz" }, // CourseIt is a Triggerfy product
   contactEmail: "hello@triggerfy.xyz",
   jurisdiction: "India",
-  lastUpdated: "October 27, 2026",
+  lastUpdated: "November 4, 2026",
 };
 
 export const LEGAL_LINKS: NavLink[] = [
   { id: 1, title: "Privacy", href: "/privacy" },
   { id: 2, title: "Terms", href: "/terms" },
+  { id: 3, title: "Refunds", href: "/refunds" },
 ];
 
 // Brand marks from Simple Icons (CC0), drawn in the current text colour.
@@ -52,6 +53,7 @@ export const FOOTER_COLUMNS: { title: string; links: NavLink[] }[] = [
       { id: 2, title: "Courses", href: "/#courses" },
       { id: 3, title: "How it works", href: "/#how-it-works" },
       { id: 4, title: "Community", href: "/community" },
+      { id: 5, title: "Pricing", href: "/pricing" },
     ],
   },
   {
@@ -75,6 +77,7 @@ export const NAV_LINKS: NavLink[] = [
   { id: 1, title: "Features", href: "/#features" },
   { id: 2, title: "Courses", href: "/#courses" },
   { id: 3, title: "How it works", href: "/#how-it-works" },
+  { id: 4, title: "Pricing", href: "/pricing" },
 ];
 
 // Signed-in sidebar. Each href also needs a matcher entry in src/proxy.ts.
@@ -83,6 +86,7 @@ export const APP_NAV_LINKS: AppNavLink[] = [
   { id: 2, title: "My courses", href: "/courses", icon: BookOpen },
   { id: 3, title: "Roadmaps", href: "/roadmaps", icon: MapIcon },
   { id: 4, title: "Notes", href: "/notes", icon: NotebookPen },
+  { id: 5, title: "Inbox", href: "/inbox", icon: Bell }, // its count is unread messages, shown highlighted
 ];
 
 export const APP_EXPLORE_LINKS: AppNavLink[] = [{ id: 1, title: "Community", href: "/community", icon: Users }];
@@ -201,9 +205,8 @@ export const TESTIMONIALS: Testimonial[] = [
 
 // Protect the AI bill while keeping CourseIt free. Courses someone already built never count.
 export const COURSE_LIMITS = {
-  newCoursesPerDay: 3,
   maxPlaylistVideos: 200,
-  maxTotalSeconds: 20 * 3600, // playlists are planned video by video, so long ones stay reliable
+  maxTotalSeconds: 20 * 3600, // hard ceiling on every plan (plans set their own caps in src/lib/plans.ts); playlists are planned video by video, so long ones stay reliable
 };
 
 // AI models. Captions come from Supadata; Gemini only watches videos that have none. Every decision and

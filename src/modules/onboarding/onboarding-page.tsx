@@ -8,6 +8,8 @@ import StatusBadge from "@/components/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
+import { canRetry, usageFor } from "@/lib/billing";
+import { stoppedByPause } from "@/lib/builds-paused";
 import { coursePath, lessonPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import RefreshWhileBuilding from "@/modules/course/components/refresh-while-building";
@@ -144,7 +146,9 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
             </div>
           </div>
 
-          {course.status === "failed" && <RetryBanner courseId={course.id} message="Something went wrong while building this course. Retry picks up where it stopped." />}
+          {course.status === "failed" && (
+            <RetryBanner canRetry={stoppedByPause(course.error) || canRetry(await usageFor(userId))} courseId={course.id} message="Something went wrong while building this course. Retry picks up where it stopped." />
+          )}
 
           <ol className="rounded-card bg-surface py-1.5 shadow-[0_0_0_1px_var(--line)]">
             {list.map((r, i) => (

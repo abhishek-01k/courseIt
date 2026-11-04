@@ -3,13 +3,15 @@ import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { courses, courseSteps, courseVideos, lessons, placementQuestions, questions, videos, videoSegments } from "@/db/schema";
 import { readVideoSegment } from "@/lib/ai";
-import { buildsPaused } from "@/lib/builds-paused";
+import { canRetry, usageFor } from "@/lib/billing";
+import { buildsPaused, PAUSED_BUILD_ERROR } from "@/lib/builds-paused";
 import { AI } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils";
 import { planLessons, writeLesson, writePlacementTest } from "@/lib/course-writer";
 import { findReading } from "@/lib/tavily";
 import { fetchTranscript } from "@/lib/transcript";
 import { BUILD_COURSE, inngest } from "./client";
+import { queueEmail } from "./send-email";
 
 // Progress: reading the videos is 10–50%, planning 60%, lessons fill 60–100%.
 const setCourse = (courseId: string, values: PgUpdateSetSource<typeof courses>) =>
@@ -63,8 +65,18 @@ export const buildCourse = inngest.createFunction(
     // A new request for the same course replaces the old build. (No concurrency limit here: in Inngest it
     // caps steps, not runs, and would write the lessons one at a time instead of in parallel.)
     cancelOn: [{ event: BUILD_COURSE, match: "data.courseId" }],
+    // Paid builds first when the queue is busy: a Max build runs ahead of anything queued in the last 5 minutes,
+    // a Pro build ahead of the last 3. Free (and events without a plan) wait their turn. Set in src/lib/billing.ts.
+    priority: { run: "event.data.plan == 'max' ? 300 : event.data.plan == 'pro' ? 180 : 0" },
     onFailure: async ({ event, error }) => {
-      await setCourse(event.data.event.data.courseId, { status: "failed", error: error.message.slice(0, 500) });
+      const courseId = event.data.event.data.courseId;
+      await setCourse(courseId, { status: "failed", error: error.message.slice(0, 500) });
+      // Tell whoever started it (once per course): Retry on Pro and Max, an upgrade link on Free.
+      const [course] = await db.select({ title: courses.title, slug: courses.slug, createdBy: courses.createdBy }).from(courses).where(eq(courses.id, courseId));
+      if (course?.createdBy) {
+        const retry = canRetry(await usageFor(course.createdBy));
+        await queueEmail("buildStopped", course.createdBy, `build-stopped:${courseId}`, { title: course.title, slug: course.slug, canRetry: retry });
+      }
     },
   },
   async ({ event, step }) => {
@@ -86,7 +98,7 @@ export const buildCourse = inngest.createFunction(
     // Paused: stop before any paid call. This runs again before every step, so a build already under way
     // stops at its next step. Marked failed so the course page offers Retry, which resumes it once unpaused.
     if (buildsPaused()) {
-      await setCourse(courseId, { status: "failed", error: "Paused for now. Press Retry later to finish building." });
+      await setCourse(courseId, { status: "failed", error: PAUSED_BUILD_ERROR });
       return;
     }
 
@@ -281,6 +293,12 @@ export const buildCourse = inngest.createFunction(
         () => setCourse(courseId, { status: "ready", progress: 100, error }),
         () => error,
       );
+      // Builds take minutes, so most people have left the page: email whoever started it (once per course).
+      const [course] = await db.select({ title: courses.title, slug: courses.slug, createdBy: courses.createdBy }).from(courses).where(eq(courses.id, courseId));
+      const [{ total }] = await db.select({ total: count() }).from(lessons).where(eq(lessons.courseId, courseId));
+      if (course?.createdBy) {
+        await queueEmail("courseReady", course.createdBy, `course-ready:${courseId}`, { title: course.title, slug: course.slug, lessons: total, missing: notReady });
+      }
     });
   },
 );

@@ -1,4 +1,7 @@
-export type BuildCourseState = { error?: string };
+// Which plan limit stopped a new course: the monthly count, the monthly hours, or how long the video is.
+// Sends the learner to /plans.
+export type UpgradeReason = "limit" | "hours" | "length" | "retry";
+export type BuildCourseState = { error?: string; upgrade?: UpgradeReason };
 
 export type CourseTileData = {
   id: string;

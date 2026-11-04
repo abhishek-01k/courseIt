@@ -22,6 +22,7 @@ export function NavList({ group, className, pathname, counts }: NavListProps) {
       {GROUPS[group].map(({ title, href, icon: Icon }) => {
         const active = pathname === href || Boolean(pathname?.startsWith(`${href}/`));
         const count = counts?.[href];
+        const alert = href === "/inbox" && !!count; // unread messages stand out; other counts are just totals
         return (
           <Link
             key={href}
@@ -33,12 +34,20 @@ export function NavList({ group, className, pathname, counts }: NavListProps) {
               active ? "bg-lime-soft font-medium text-pill-ink" : "text-ink-soft",
             )}
           >
-            <Icon aria-hidden="true" className="size-[18px] shrink-0" />
+            <span className="relative shrink-0">
+              <Icon aria-hidden="true" className="size-[18px]" />
+              {alert && <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 hidden size-2 rounded-full bg-moss group-data-[collapsed=true]/side:block" />}
+            </span>
             <span className="flex-1 group-data-[collapsed=true]/side:sr-only">{title}</span>
             {count ? (
-              <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-[0.72rem] text-ink-soft tabular-nums shadow-[inset_0_0_0_1px_var(--line)] group-data-[collapsed=true]/side:hidden">
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 font-mono text-[0.72rem] tabular-nums group-data-[collapsed=true]/side:hidden",
+                  alert ? "bg-moss text-on-moss" : "bg-surface text-ink-soft shadow-[inset_0_0_0_1px_var(--line)]",
+                )}
+              >
                 {count}
-                <span className="sr-only"> {title.toLowerCase()}</span>
+                <span className="sr-only"> {alert ? "unread" : title.toLowerCase()}</span>
               </span>
             ) : null}
           </Link>

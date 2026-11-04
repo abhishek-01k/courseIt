@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Landscape from "@/components/landscape";
 import Pill from "@/components/pill";
 import { auth } from "@/lib/auth";
-import CourseUrlForm from "./course-url-form";
+import BuildCourseForm from "./build-course-form";
 
 async function FirstName() {
   const session = await auth();
@@ -31,7 +31,7 @@ export default function StartCourse() {
               <FirstName />
             </Suspense>
           </h1>
-          <CourseUrlForm />
+          <BuildCourseForm />
         </div>
       </div>
     </section>

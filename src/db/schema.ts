@@ -13,6 +13,18 @@ export const users = pgTable("user", {
   image: text("image"),
   timezone: text("timezone"), // the learner's IANA zone, so "today" and streaks follow their clock
   minutesPerDay: integer("minutes_per_day").notNull().default(90), // daily learning time (Settings); every course's days are packed from it
+  // Billing, kept in step with Dodo Payments by its webhooks (src/lib/billing.ts decides what the learner gets).
+  plan: text("plan").$type<"free" | "pro" | "max">().notNull().default("free"),
+  planStatus: text("plan_status"), // Dodo's subscription status: active, on_hold, cancelled, expired…
+  planRenewsAt: timestamp("plan_renews_at", { mode: "date" }), // end of the paid period
+  planCancelsAtRenewal: boolean("plan_cancels_at_renewal").notNull().default(false),
+  dodoCustomerId: text("dodo_customer_id").unique(),
+  dodoSubscriptionId: text("dodo_subscription_id").unique(),
+  // Set when an email to this address bounced or was marked as spam (Resend webhook). We stop emailing it.
+  emailSuppressedAt: timestamp("email_suppressed_at", { mode: "date" }),
+  // Announcements and product news by email (Settings → Notifications, or the unsubscribe link). The Inbox copy
+  // always arrives; account emails (course ready, billing) aren't affected.
+  emailNews: boolean("email_news").notNull().default(true),
 });
 
 export const accounts = pgTable(
@@ -345,6 +357,58 @@ export const roadmapFollows = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.roadmapId] }), index("roadmap_follow_roadmap_idx").on(t.roadmapId, t.createdAt)],
+);
+
+// In-app messages (the Inbox). Every email also lands here, so learners without an email address (some X
+// sign-ins) still hear about it. `key` matches the email's, so one event never makes two messages.
+export const notifications = pgTable(
+  "notification",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    key: text("key").notNull().unique(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    href: text("href"), // where "Open" goes, a path in the app
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    readAt: timestamp("read_at", { mode: "date" }),
+  },
+  (t) => [index("notification_user_idx").on(t.userId, t.createdAt)],
+);
+
+// A message an admin sends to many learners at once (Admin → Announcements), by email and Inbox.
+export const announcements = pgTable("announcement", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  subject: text("subject").notNull(), // email subject
+  heading: text("heading").notNull(), // big line in the email, and the Inbox title
+  body: text("body").notNull(), // plain text; a blank line starts a new paragraph
+  ctaLabel: text("cta_label"),
+  ctaHref: text("cta_href"), // a path in the app ("/plans") or a full URL
+  audience: text("audience").$type<"all" | "free" | "paid" | "admins">().notNull().default("all"), // admins: a dry run to ourselves
+  status: text("status").$type<"draft" | "sending" | "sent">().notNull().default("draft"),
+  recipients: integer("recipients"), // how many it went to, once sent
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  sentAt: timestamp("sent_at", { mode: "date" }),
+});
+
+// Every email we send (src/inngest/send-email.ts). `key` names one email ("course-ready:<course id>"), so a
+// retry or a repeated event never sends it twice; Resend's webhook fills in delivered / bounced / complained.
+export const emailLog = pgTable(
+  "email_log",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    key: text("key").notNull().unique(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    template: text("template").notNull(),
+    to: text("to"),
+    status: text("status").$type<"sending" | "sent" | "delivered" | "bounced" | "complained" | "skipped" | "failed">().notNull().default("sending"),
+    detail: text("detail"), // why it was skipped or failed
+    resendId: text("resend_id").unique(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("email_log_user_idx").on(t.userId, t.createdAt)],
 );
 
 export const coursesRelations = relations(courses, ({ many }) => ({ videos: many(courseVideos), lessons: many(lessons) }));

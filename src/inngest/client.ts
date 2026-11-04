@@ -4,3 +4,5 @@ import { Inngest } from "inngest";
 export const inngest = new Inngest({ id: "courseit" });
 
 export const BUILD_COURSE = "course/build.requested";
+export const SEND_EMAIL = "email/send.requested";
+export const ANNOUNCEMENT_SEND = "announcement/send.requested";

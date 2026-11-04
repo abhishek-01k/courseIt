@@ -5,11 +5,13 @@ import { Suspense } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { isAdmin } from "@/lib/admin";
 import { auth } from "@/lib/auth";
+import { usageFor } from "@/lib/billing";
 import { cn } from "@/lib/utils";
 import { coursePath } from "@/lib/paths";
 import { getEnrolledCourses } from "@/modules/course/queries";
 import { getSidebarCounts } from "@/modules/dashboard/queries";
 import { getCourseProgress } from "@/modules/roadmap/queries";
+import BuildAllowance from "./BuildAllowance";
 import Logo from "./Logo";
 import Navbar from "./Navbar";
 import SidebarFrame from "./SidebarFrame";
@@ -23,7 +25,8 @@ const navLink = "flex min-h-11 items-center gap-3 rounded-xl px-3 text-[0.95rem]
 async function SidebarUser() {
   const session = await auth();
   const admin = isAdmin(session?.user?.email);
-  return <UserMenu name={session?.user?.name ?? "Learner"} image={session?.user?.image} plan={admin ? "Admin" : "Free beta"} admin={admin} />;
+  const plan = admin ? "Admin" : session?.user?.id ? `${(await usageFor(session.user.id)).plan.name} plan` : "Free plan";
+  return <UserMenu name={session?.user?.name ?? "Learner"} image={session?.user?.image} plan={plan} admin={admin} />;
 }
 
 async function MainNav() {
@@ -116,6 +119,10 @@ async function Chrome() {
             <SidebarRecents />
           </Suspense>
         </div>
+
+        <Suspense>
+          <BuildAllowance />
+        </Suspense>
 
         <div className="flex shrink-0 flex-col gap-0.5">
           <span className={sectionLabel}>Explore</span>

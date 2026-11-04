@@ -25,6 +25,8 @@ export async function act<T>(run: () => Promise<T>, fail: string): Promise<T | n
   try {
     const result = await run();
     const { error, upgrade } = (result as { error?: string; upgrade?: boolean } | undefined) ?? {};
+    // act() runs outside React, so no router here: a full load to /pricing is fine.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     if (error) toast.error(error, upgrade ? { duration: 10_000, action: { label: "See plans", onClick: () => window.location.assign("/pricing") } } : undefined);
     return result;
   } catch (error) {

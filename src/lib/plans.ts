@@ -47,7 +47,7 @@ export const PLANS: Record<PlanId, Plan> = {
 export const PAID_PLANS = [PLANS.pro, PLANS.max];
 
 /** Dodo product ids, one per plan and interval. Create the 4 subscription products in Dodo and paste their ids. */
-export const productIdFor = (plan: PlanId, interval: Interval) =>
+export const productIdFor = (plan: Exclude<PlanId, "free">, interval: Interval) =>
   ({
     "pro:month": process.env.DODO_PRODUCT_PRO_MONTHLY,
     "pro:year": process.env.DODO_PRODUCT_PRO_YEARLY,

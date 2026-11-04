@@ -356,6 +356,23 @@ export const roadmapFollows = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.roadmapId] }), index("roadmap_follow_roadmap_idx").on(t.roadmapId, t.createdAt)],
 );
 
+// In-app messages (the Inbox). Every email also lands here, so learners without an email address (some X
+// sign-ins) still hear about it. `key` matches the email's, so one event never makes two messages.
+export const notifications = pgTable(
+  "notification",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    key: text("key").notNull().unique(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    href: text("href"), // where "Open" goes, a path in the app
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    readAt: timestamp("read_at", { mode: "date" }),
+  },
+  (t) => [index("notification_user_idx").on(t.userId, t.createdAt)],
+);
+
 // Every email we send (src/inngest/send-email.ts). `key` names one email ("course-ready:<course id>"), so a
 // retry or a repeated event never sends it twice; Resend's webhook fills in delivered / bounced / complained.
 export const emailLog = pgTable(

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import { db } from "@/db";
-import { emailLog, users } from "@/db/schema";
+import { emailLog, notifications, users } from "@/db/schema";
 import { type Template, TEMPLATES, type TemplateProps } from "@/emails/templates";
 import { inngest, SEND_EMAIL } from "./client";
 
@@ -19,12 +19,24 @@ export async function queueEmail<T extends Template>(template: T, userId: string
   }
 }
 
-// Every email goes out through here: retried if Resend is down, throttled under Resend's rate limit, logged in
-// email_log, and skipped for learners with no email address or one that bounced (see the Resend webhook).
+// Every message goes out through here: first into the learner's Inbox (always), then by email: retried if Resend
+// is down, throttled under Resend's rate limit, logged in email_log, and skipped for learners with no email
+// address or one that bounced (see the Resend webhook).
 export const sendEmail = inngest.createFunction(
   { id: "send-email", triggers: [{ event: SEND_EMAIL }], retries: 5, throttle: { limit: 2, period: "1s" } },
   async ({ event, step }) => {
     const { template, userId, key, props } = event.data as SendEmailData;
+
+    type Built = { subject: string; body: React.ReactElement; note: { title: string; text: string; href: string } };
+    const build = TEMPLATES[template] as (p: Record<string, unknown>) => Built;
+
+    await step.run("inbox", async () => {
+      const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId));
+      if (!user) return "no such learner";
+      const { note } = build({ ...props, name: user.name });
+      await db.insert(notifications).values({ key, userId, title: note.title, body: note.text, href: note.href }).onConflictDoNothing();
+      return "saved";
+    });
 
     return step.run("send", async () => {
       const [done] = await db.select({ status: emailLog.status }).from(emailLog).where(eq(emailLog.key, key));
@@ -39,7 +51,6 @@ export const sendEmail = inngest.createFunction(
       }
       await db.insert(emailLog).values({ ...row, status: "sending" }).onConflictDoUpdate({ target: emailLog.key, set: { status: "sending", detail: null, updatedAt: new Date() } });
 
-      const build = TEMPLATES[template] as (p: Record<string, unknown>) => { subject: string; body: React.ReactElement };
       const { subject, body } = build({ ...props, name: user!.name });
       const resend = new Resend(process.env.RESEND_API_KEY);
       const { data, error } = await resend.emails.send(

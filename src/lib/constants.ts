@@ -1,4 +1,4 @@
-import { BookOpen, Home, Map as MapIcon, NotebookPen, Users } from "lucide-react";
+import { Bell, BookOpen, Home, Map as MapIcon, NotebookPen, Users } from "lucide-react";
 import type { AppNavLink } from "@/types/app-sidebar";
 import type { LessonFormat } from "@/types/format-toggle";
 import type { HowStep } from "@/types/how-it-works";
@@ -86,6 +86,7 @@ export const APP_NAV_LINKS: AppNavLink[] = [
   { id: 2, title: "My courses", href: "/courses", icon: BookOpen },
   { id: 3, title: "Roadmaps", href: "/roadmaps", icon: MapIcon },
   { id: 4, title: "Notes", href: "/notes", icon: NotebookPen },
+  { id: 5, title: "Inbox", href: "/inbox", icon: Bell }, // its count is unread messages, shown highlighted
 ];
 
 export const APP_EXPLORE_LINKS: AppNavLink[] = [{ id: 1, title: "Community", href: "/community", icon: Users }];

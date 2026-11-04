@@ -1,17 +1,19 @@
 import { PLANS } from "@/lib/plans";
 import { appUrl, EmailLayout, P, Strong } from "./layout";
 
-// Every email CourseIt sends. Each takes the details it needs and returns a subject and the email itself.
+// Every message CourseIt sends. Each takes the details it needs and returns the email (subject and body) and
+// `note`, the short version shown in the in-app Inbox (href is a path in the app).
 // To add one: write it here, then queue it with queueEmail (src/inngest/send-email.ts).
 
 const date = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 const hi = (name?: string | null) => (name ? `Hi ${name.split(" ")[0]},` : "Hi,");
 
-type Email = { subject: string; body: React.ReactElement };
+type Email = { subject: string; body: React.ReactElement; note: { title: string; text: string; href: string } };
 
 export const TEMPLATES = {
   welcome: ({ name }: { name?: string | null }): Email => ({
     subject: "Welcome to CourseIt",
+    note: { title: "Welcome to CourseIt", text: `Your first course is free, up to ${PLANS.free.maxHours} hours long. Paste any long YouTube video to start.`, href: "/new" },
     body: (
       <EmailLayout preview="Turn any long YouTube video into a course with lessons, quizzes and a daily plan." heading="Welcome to CourseIt" cta={{ label: "Build your first course", href: appUrl("/new") }}>
         <P>{hi(name)}</P>
@@ -28,6 +30,7 @@ export const TEMPLATES = {
 
   courseReady: ({ name, title, slug, lessons, missing }: { name?: string | null; title: string; slug: string; lessons: number; missing: number }): Email => ({
     subject: `Your course is ready: ${title}`,
+    note: { title: "Your course is ready", text: `${title}: ${lessons} lessons${missing ? `, ${missing} still missing` : ""}.`, href: `/courses/${slug}` },
     body: (
       <EmailLayout preview={`${lessons} lessons, notes and quizzes, ready when you are.`} heading="Your course is ready" cta={{ label: "Start lesson 1", href: appUrl(`/courses/${slug}`) }}>
         <P>{hi(name)}</P>
@@ -46,6 +49,7 @@ export const TEMPLATES = {
 
   buildStopped: ({ name, title, slug, canRetry }: { name?: string | null; title: string; slug: string; canRetry: boolean }): Email => ({
     subject: `We couldn't finish your course: ${title}`,
+    note: { title: "Your course stopped building", text: `${title}. ${canRetry ? "Press Retry to pick up where it stopped." : "Retry is part of Pro and Max."}`, href: canRetry ? `/courses/${slug}` : "/plans?reason=retry" },
     body: (
       <EmailLayout
         preview="Something went wrong while building it. Everything already written is kept."
@@ -67,6 +71,7 @@ export const TEMPLATES = {
 
   planStarted: ({ name, plan, courses, hours }: { name?: string | null; plan: string; courses: number; hours: number }): Email => ({
     subject: `Welcome to CourseIt ${plan}`,
+    note: { title: `You're on ${plan}`, text: `${courses} new courses a month, ${hours} hours of video. Thanks for upgrading!`, href: "/new" },
     body: (
       <EmailLayout preview={`${courses} new courses a month, ${hours} hours of video. Thanks for supporting CourseIt.`} heading={`You're on ${plan}`} cta={{ label: "Build a course", href: appUrl("/new") }}>
         <P>{hi(name)}</P>
@@ -81,6 +86,7 @@ export const TEMPLATES = {
 
   paymentFailed: ({ name, plan }: { name?: string | null; plan: string }): Email => ({
     subject: "Your CourseIt payment didn't go through",
+    note: { title: "Your payment didn't go through", text: `Update your payment method to keep ${plan}.`, href: "/api/billing/portal" },
     body: (
       <EmailLayout preview={`Update your card to keep ${plan}.`} heading="Your payment didn't go through" cta={{ label: "Update payment method", href: appUrl("/api/billing/portal") }}>
         <P>{hi(name)}</P>
@@ -94,6 +100,7 @@ export const TEMPLATES = {
 
   planEnding: ({ name, plan, endsAt }: { name?: string | null; plan: string; endsAt: string }): Email => ({
     subject: `Your ${plan} plan ends on ${date(endsAt)}`,
+    note: { title: `Your ${plan} plan is ending`, text: `You keep it until ${date(endsAt)}, then move to Free. Your courses stay yours.`, href: "/settings" },
     body: (
       <EmailLayout preview="You keep everything until then. Changed your mind? Keep your plan in one click." heading={`Your ${plan} plan is ending`} cta={{ label: "Keep my plan", href: appUrl("/api/billing/portal") }}>
         <P>{hi(name)}</P>
@@ -107,6 +114,7 @@ export const TEMPLATES = {
 
   renewalReminder: ({ name, plan, renewsAt, amount }: { name?: string | null; plan: string; renewsAt: string; amount: string }): Email => ({
     subject: `Your ${plan} plan renews on ${date(renewsAt)}`,
+    note: { title: "Your yearly plan renews soon", text: `${plan} renews on ${date(renewsAt)} for ${amount}.`, href: "/settings" },
     body: (
       <EmailLayout preview={`${amount} for another year of ${plan}. Nothing to do if you'd like to continue.`} heading="Your yearly plan renews soon" cta={{ label: "Manage billing", href: appUrl("/api/billing/portal") }}>
         <P>{hi(name)}</P>

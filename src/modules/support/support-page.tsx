@@ -16,7 +16,7 @@ async function EmailCard() {
   const user = session?.user;
   if (!user?.id) redirect("/login");
   const usage = await usageFor(user.id);
-  const body = ["Hi CourseIt team,", "", "", "", "---", `Account: ${user.email ?? user.id}`, `Plan: ${usage.unlimited ? "Admin" : usage.plan.name}`].join("\n");
+  const body = ["Hi CourseIt team,", "", "", "", "---", `Account: ${user.email ?? user.id}`, `Plan: ${usage.admin ? "Admin" : usage.plan.name}`].join("\n");
   const href = `mailto:${LEGAL.contactEmail}?subject=${encodeURIComponent("CourseIt support")}&body=${encodeURIComponent(body)}`;
 
   return (
@@ -65,12 +65,12 @@ async function ChatCard() {
     );
   }
 
-  const hello = `Hi CourseIt team! (${user.email ?? user.id}, ${usage.unlimited ? "Admin" : usage.plan.name})`;
+  const hello = `Hi CourseIt team! (${user.email ?? user.id}, ${usage.admin ? "Admin" : usage.plan.name})`;
   return (
     <div className="flex flex-col gap-4 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
         <p className="text-[1.1rem] font-medium">Chat with us</p>
-        <p className="text-[0.92rem] text-ink-soft">As a {usage.unlimited ? "Max" : usage.plan.name} member you can message us directly. We reply on working days.</p>
+        <p className="text-[0.92rem] text-ink-soft">As a {usage.admin ? "Max" : usage.plan.name} member you can message us directly. We reply on working days.</p>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         {whatsapp && (

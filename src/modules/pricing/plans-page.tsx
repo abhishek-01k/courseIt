@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import PageHeader from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
-import { usageFor } from "@/lib/billing";
+import { paymentsLive, usageFor } from "@/lib/billing";
 import { currentRegion } from "@/lib/region";
 import PlanCards from "./components/plan-cards";
 
@@ -19,8 +19,9 @@ async function Plans({ searchParams }: { searchParams: Search }) {
   const [usage, params, region] = await Promise.all([usageFor(userId), searchParams, currentRegion()]);
   const { plan } = usage;
 
-  const notice =
-    params.error === "checkout"
+  const notice = !paymentsLive()
+    ? "Pro and Max are coming soon. Until then, building courses has no monthly limit, so keep learning!"
+    : params.error === "checkout"
       ? "We couldn't open the checkout. Try again in a moment."
       : params.reason === "limit" && plan.lifetime
         ? "You've used your free course. Upgrade to Pro or Max to build more. Courses others already built are still free to join."
@@ -42,7 +43,7 @@ async function Plans({ searchParams }: { searchParams: Search }) {
         </p>
       )}
       <p className="text-ink-soft">
-        You&apos;re on <strong className="font-medium text-ink">{usage.unlimited ? "Admin · unlimited" : plan.name}</strong>
+        You&apos;re on <strong className="font-medium text-ink">{usage.admin ? "Admin · unlimited" : plan.name}</strong>
         {usage.unlimited
           ? ""
           : plan.lifetime
@@ -53,7 +54,7 @@ async function Plans({ searchParams }: { searchParams: Search }) {
         .
       </p>
       <div className="-mt-10">
-        <PlanCards region={region} current={plan.id} />
+        <PlanCards region={region} current={plan.id} live={paymentsLive()} />
       </div>
     </>
   );

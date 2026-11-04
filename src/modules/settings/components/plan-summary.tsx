@@ -19,7 +19,7 @@ export default async function PlanSummary() {
     <div className="flex flex-col gap-4 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
         <p className="text-[1.1rem] font-medium">
-          {usage.unlimited ? "Admin · unlimited" : plan.name}{" "}
+          {usage.admin ? "Admin · unlimited" : plan.name}{" "}
           <span className="text-ink-soft">
             ·{" "}
             {usage.unlimited

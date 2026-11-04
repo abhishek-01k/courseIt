@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { usageFor } from "@/lib/billing";
+import { paymentsLive, usageFor } from "@/lib/billing";
 import { createCheckout } from "@/lib/dodo";
 import { type Interval, type PlanId, productIdFor } from "@/lib/plans";
 import { currentRegion } from "@/lib/region";
@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) redirect("/login");
+  // Closed until live payments are switched on, so a test-mode key in production can't hand out free plans.
+  if (!paymentsLive()) redirect("/plans?error=soon");
 
   const plan = request.nextUrl.searchParams.get("plan") as PlanId;
   const interval = (request.nextUrl.searchParams.get("interval") === "year" ? "year" : "month") as Interval;

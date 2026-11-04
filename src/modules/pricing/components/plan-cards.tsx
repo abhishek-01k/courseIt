@@ -11,7 +11,8 @@ const ORDER = [PLANS.free, PLANS.pro, PLANS.max];
 
 // `region`: whose prices to show (see src/lib/region.ts). `current`: the signed-in learner's plan (on /plans); its
 // button turns into a label. The public page leaves it out.
-export default function PlanCards({ region, current }: { region: Region; current?: PlanId }) {
+// `live`: false until payments are switched on (paymentsLive in src/lib/billing.ts); paid plans then say "Coming soon".
+export default function PlanCards({ region, current, live }: { region: Region; current?: PlanId; live: boolean }) {
   const [interval, setBillingInterval] = useState<Interval>("month");
 
   return (
@@ -67,7 +68,9 @@ export default function PlanCards({ region, current }: { region: Region; current
                   </li>
                 ))}
               </ul>
-              {current === plan.id ? (
+              {!live && plan.id !== "free" ? (
+                <span className={buttonVariants({ size: "lg", variant: "outline", className: "pointer-events-none w-full opacity-70" })}>Coming soon</span>
+              ) : current === plan.id ? (
                 <span className={buttonVariants({ size: "lg", variant: "outline", className: "pointer-events-none w-full opacity-70" })}>Your plan</span>
               ) : current && plan.id === "free" ? (
                 <Link href="/api/billing/portal" prefetch={false} className={buttonVariants({ size: "lg", variant: "outline", className: "w-full" })}>

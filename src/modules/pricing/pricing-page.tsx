@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import Pill from "@/components/pill";
 import { Skeleton } from "@/components/ui/skeleton";
+import { paymentsLive } from "@/lib/billing";
 import { currentRegion } from "@/lib/region";
 import PlanCards from "./components/plan-cards";
 
 // Prices follow the visitor's country, so this part is read per request.
 async function RegionalPlanCards() {
-  return <PlanCards region={await currentRegion()} />;
+  return <PlanCards region={await currentRegion()} live={paymentsLive()} />;
 }
 
 // Public /pricing. Buttons go to /api/billing/checkout, which asks signed-out visitors to sign in first.

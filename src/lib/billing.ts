@@ -19,13 +19,23 @@ function hasPaidAccess(u: Billing) {
 
 const MONTH_MS = 30 * 24 * 3600 * 1000;
 
+/**
+ * Whether learners can pay. Off until Dodo approves the business and DODO_PAYMENTS_ENVIRONMENT=live_mode is set:
+ * paid plans show "Coming soon", checkout is closed, and build limits stay off (nobody hits a limit they can't pay
+ * to lift). Set DODO_ALLOW_TEST_CHECKOUT=1 locally to try test-mode checkout; never in production, where it would
+ * let anyone get a paid plan with a test card.
+ */
+export const paymentsLive = () =>
+  process.env.DODO_PAYMENTS_ENVIRONMENT === "live_mode" || (process.env.NODE_ENV !== "production" && process.env.DODO_ALLOW_TEST_CHECKOUT === "1");
+
 export type Usage = {
   plan: Plan;
   used: number; // new courses built in the last 30 days (on Free: ever)
   left: number;
   hoursUsed: number; // video hours of those courses
   hoursLeft: number;
-  unlimited: boolean; // admins
+  unlimited: boolean; // no build limits: admins, or anyone while payments aren't live yet
+  admin: boolean;
   renewsAt: Date | null;
   cancelsAtRenewal: boolean;
   status: string | null;
@@ -52,7 +62,8 @@ export const usageFor = cache(async (userId: string): Promise<Usage> => {
     // Free's one course is once per account, so anyone who has built a course (even one that failed, or
     // back when they were paying) needs Pro or Max to build another. Paid plans count a rolling 30 days.
     .where(and(eq(courses.createdBy, userId), plan.lifetime ? undefined : gte(courses.createdAt, new Date(Date.now() - MONTH_MS))));
-  const unlimited = isAdmin(u?.email);
+  const admin = isAdmin(u?.email);
+  const unlimited = admin || !paymentsLive();
   return {
     plan,
     used,
@@ -60,6 +71,7 @@ export const usageFor = cache(async (userId: string): Promise<Usage> => {
     hoursUsed: Math.round(((seconds ?? 0) / 3600) * 10) / 10,
     hoursLeft: unlimited ? Infinity : Math.max(0, plan.hoursPerMonth - (seconds ?? 0) / 3600),
     unlimited,
+    admin,
     renewsAt: plan.id === "free" ? null : (u?.planRenewsAt ?? null),
     cancelsAtRenewal: plan.id !== "free" && !!u?.planCancelsAtRenewal,
     status: u?.planStatus ?? null,
@@ -94,10 +106,10 @@ export function buildBlock(u: Usage): { title: string; detail: string; upgrade: 
 }
 
 /** On Pro or Max (admins count too). Paid perks: retrying failed builds, chat support. */
-export const isPaid = (u: Usage) => u.unlimited || u.plan.id !== "free";
+export const isPaid = (u: Usage) => u.admin || u.plan.id !== "free";
 
-/** Retrying a failed build is a Pro and Max feature. A failed build still counts toward Free's limit. */
-export const canRetry = isPaid;
+/** Retrying a failed build is a Pro and Max feature (for everyone while payments aren't live). It still counts toward Free's limit. */
+export const canRetry = (u: Usage) => isPaid(u) || !paymentsLive();
 
 /** Sent with every build so Inngest runs paid builds first when the queue is busy (see build-course.ts). */
 export const buildPriority = (u: Usage) => (u.unlimited ? "max" : u.plan.id);

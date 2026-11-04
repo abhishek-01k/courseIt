@@ -17,3 +17,12 @@ export async function setDailyMinutesAction(minutesPerDay: number) {
   await db.update(users).set({ minutesPerDay: minutes }).where(eq(users.id, userId));
   refresh();
 }
+
+/** Settings → Email: announcements by email on or off. Account emails (course ready, billing) always arrive. */
+export async function setEmailNewsAction(on: boolean) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) redirect("/login");
+  await db.update(users).set({ emailNews: Boolean(on) }).where(eq(users.id, userId));
+  refresh();
+}

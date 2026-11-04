@@ -9,7 +9,8 @@ const font = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 export const appUrl = (path = "") => `${(process.env.APP_URL ?? "https://www.courseit.xyz").replace(/\/$/, "")}${path}`;
 
 /** Every CourseIt email: a white card on the site's paper colour, one heading, one button, a short footer. */
-export function EmailLayout({ preview, heading, children, cta }: { preview: string; heading: string; children: React.ReactNode; cta?: { label: string; href: string } }) {
+// `unsubscribe`: optional emails (announcements) carry an unsubscribe link; account emails don't need one.
+export function EmailLayout({ preview, heading, children, cta, unsubscribe }: { preview: string; heading: string; children: React.ReactNode; cta?: { label: string; href: string }; unsubscribe?: string }) {
   return (
     <Html lang="en">
       <Head />
@@ -38,6 +39,14 @@ export function EmailLayout({ preview, heading, children, cta }: { preview: stri
             .
             <br />
             CourseIt is a product of {LEGAL.operator}. <Link href={appUrl("/settings")} style={{ color: C.moss }}>Settings</Link>
+            {unsubscribe && (
+              <>
+                {" · "}
+                <Link href={unsubscribe} style={{ color: C.moss }}>
+                  Unsubscribe from announcements
+                </Link>
+              </>
+            )}
           </Text>
         </Container>
       </Body>

@@ -22,6 +22,9 @@ export const users = pgTable("user", {
   dodoSubscriptionId: text("dodo_subscription_id").unique(),
   // Set when an email to this address bounced or was marked as spam (Resend webhook). We stop emailing it.
   emailSuppressedAt: timestamp("email_suppressed_at", { mode: "date" }),
+  // Announcements and product news by email (Settings → Notifications, or the unsubscribe link). The Inbox copy
+  // always arrives; account emails (course ready, billing) aren't affected.
+  emailNews: boolean("email_news").notNull().default(true),
 });
 
 export const accounts = pgTable(
@@ -372,6 +375,22 @@ export const notifications = pgTable(
   },
   (t) => [index("notification_user_idx").on(t.userId, t.createdAt)],
 );
+
+// A message an admin sends to many learners at once (Admin → Announcements), by email and Inbox.
+export const announcements = pgTable("announcement", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  subject: text("subject").notNull(), // email subject
+  heading: text("heading").notNull(), // big line in the email, and the Inbox title
+  body: text("body").notNull(), // plain text; a blank line starts a new paragraph
+  ctaLabel: text("cta_label"),
+  ctaHref: text("cta_href"), // a path in the app ("/plans") or a full URL
+  audience: text("audience").$type<"all" | "free" | "paid" | "admins">().notNull().default("all"), // admins: a dry run to ourselves
+  status: text("status").$type<"draft" | "sending" | "sent">().notNull().default("draft"),
+  recipients: integer("recipients"), // how many it went to, once sent
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  sentAt: timestamp("sent_at", { mode: "date" }),
+});
 
 // Every email we send (src/inngest/send-email.ts). `key` names one email ("course-ready:<course id>"), so a
 // retry or a repeated event never sends it twice; Resend's webhook fills in delivered / bounced / complained.

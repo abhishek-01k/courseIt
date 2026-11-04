@@ -128,5 +128,30 @@ export const TEMPLATES = {
   }),
 };
 
+/** Admin → Announcements. `body` is plain text; a blank line starts a new paragraph. */
+export function announcementEmail(a: { subject: string; heading: string; body: string; ctaLabel?: string | null; ctaHref?: string | null }, name: string | null | undefined, unsubscribe: string) {
+  const paragraphs = a.body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const href = a.ctaHref ? (a.ctaHref.startsWith("/") ? appUrl(a.ctaHref) : a.ctaHref) : null;
+  return {
+    subject: a.subject,
+    body: (
+      <EmailLayout preview={paragraphs[0]?.slice(0, 140) ?? a.heading} heading={a.heading} cta={a.ctaLabel && href ? { label: a.ctaLabel, href } : undefined} unsubscribe={unsubscribe}>
+        <P>{hi(name)}</P>
+        {paragraphs.map((p, i) => (
+          <P key={i}>
+            {p.split("\n").map((line, j) => (
+              <span key={j}>
+                {j > 0 && <br />}
+                {line}
+              </span>
+            ))}
+          </P>
+        ))}
+      </EmailLayout>
+    ),
+    note: { title: a.heading, text: (paragraphs[0] ?? "").slice(0, 240), href: a.ctaHref?.startsWith("/") ? a.ctaHref : "/inbox" },
+  };
+}
+
 export type Template = keyof typeof TEMPLATES;
 export type TemplateProps<T extends Template> = Parameters<(typeof TEMPLATES)[T]>[0];

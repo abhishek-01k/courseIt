@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import BillingHistory from "./components/billing-history";
+import EmailPrefs from "./components/email-prefs";
 import PacePicker from "./components/pace-picker";
 import PlanSummary from "./components/plan-summary";
 
@@ -16,6 +17,14 @@ async function DailyTime() {
   if (!userId) redirect("/login");
   const [user] = await db.select({ minutesPerDay: users.minutesPerDay }).from(users).where(eq(users.id, userId));
   return <PacePicker minutesPerDay={user?.minutesPerDay ?? 90} />;
+}
+
+async function Email() {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) redirect("/login");
+  const [user] = await db.select({ news: users.emailNews, email: users.email }).from(users).where(eq(users.id, userId));
+  return <EmailPrefs news={user?.news ?? true} email={user?.email ?? null} />;
 }
 
 export default function SettingsPage() {
@@ -31,6 +40,14 @@ export default function SettingsPage() {
         </div>
         <Suspense fallback={<Skeleton className="h-36 rounded-card" />}>
           <DailyTime />
+        </Suspense>
+      </section>
+      <section aria-labelledby="email-title" className="flex flex-col gap-3">
+        <h2 id="email-title" className="text-h3 font-medium">
+          Email
+        </h2>
+        <Suspense fallback={<Skeleton className="h-28 rounded-card" />}>
+          <Email />
         </Suspense>
       </section>
       <section aria-labelledby="plan-title" className="flex flex-col gap-3">

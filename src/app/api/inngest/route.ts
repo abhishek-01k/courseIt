@@ -2,9 +2,10 @@ import { serve } from "inngest/next";
 import { buildCourse } from "@/inngest/build-course";
 import { inngest } from "@/inngest/client";
 import { renewalReminders } from "@/inngest/renewal-reminders";
+import { sendAnnouncement } from "@/inngest/send-announcement";
 import { sendEmail } from "@/inngest/send-email";
 
 // Inngest calls this route to run each step. Course builds can be long, so allow the maximum.
 export const maxDuration = 300;
 
-export const { GET, POST, PUT } = serve({ client: inngest, functions: [buildCourse, sendEmail, renewalReminders] });
+export const { GET, POST, PUT } = serve({ client: inngest, functions: [buildCourse, sendEmail, renewalReminders, sendAnnouncement] });

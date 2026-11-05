@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
-import { usageFor } from "@/lib/billing";
+import { shortDate, usageFor } from "@/lib/billing";
+import { formatHours } from "@/lib/plans";
 
 const date = (d: Date) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
@@ -23,12 +24,10 @@ export default async function PlanSummary() {
           <span className="text-ink-soft">
             ·{" "}
             {usage.unlimited
-              ? `${usage.used} new courses, ${usage.hoursUsed} hours in the last 30 days`
-              : plan.lifetime
-                ? usage.left > 0
-                  ? "your free course is still to build"
-                  : "free course used"
-                : `${usage.used} of ${plan.coursesPerMonth} new courses, ${usage.hoursUsed} of ${plan.hoursPerMonth} hours in the last 30 days`}
+              ? `${usage.hoursUsed} hours of video built this month`
+              : plan.coursesPerMonth
+                ? `${usage.coursesLeft} of ${plan.coursesPerMonth} free course left this month (up to ${plan.maxHours}h)${usage.hoursBackAt ? `, renews ${shortDate(usage.hoursBackAt)}` : ""}`
+                : `${formatHours(usage.hoursLeft)} of ${plan.hoursPerMonth} hours left this month${plan.id === "free" && usage.hoursBackAt ? `, renews ${shortDate(usage.hoursBackAt)}` : ""}`}
           </span>
         </p>
         <p className="text-[0.92rem] text-ink-soft">

@@ -13,4 +13,5 @@ export type CourseTileData = {
   status: "queued" | "reading" | "building" | "ready" | "failed";
   addedBy?: string | null;
   learners?: number;
+  isPrivate?: boolean; // only its builder sees it (a Pro and Max perk)
 };

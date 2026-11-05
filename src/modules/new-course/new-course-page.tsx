@@ -15,7 +15,7 @@ export default function NewCoursePage() {
           <h1 id="new-title" className="text-[clamp(2rem,4vw,2.7rem)] leading-[1.08]">
             Paste a long video. <em className="italic text-moss">Get a course.</em>
           </h1>
-          <p className="text-ink-soft">Any YouTube video or playlist, from a 20-minute talk to a 6-hour course.</p>
+          <p className="text-ink-soft">Any YouTube video or playlist with captions, from a 20-minute talk to a full bootcamp.</p>
           {buildsPaused() && <p className="rounded-2xl bg-lime-soft px-4 py-2.5 text-[0.92rem] text-moss">{BUILDS_PAUSED_MESSAGE}</p>}
           <BuildCourseForm caption="Already built by someone? It opens instantly" />
         </div>

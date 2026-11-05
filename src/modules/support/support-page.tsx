@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
 import { isPaid, usageFor } from "@/lib/billing";
+import { freePlan } from "@/lib/plans";
 import { LEGAL } from "@/lib/constants";
 
 // /support: how to reach us. There's no mail service, so "Email support" opens the learner's own mail app with
@@ -56,7 +57,7 @@ async function ChatCard() {
             <Lock aria-hidden="true" className="size-4 text-ink-soft" />
             Chat with us
           </p>
-          <p className="text-[0.92rem] text-ink-soft">Pro and Max members can message us on WhatsApp or Telegram for faster help.</p>
+          <p className="text-[0.92rem] text-ink-soft">Telegram support on Pro. WhatsApp and priority support on Max.</p>
         </div>
         <Link href="/plans" className={buttonVariants({ size: "lg", variant: "outline", className: "shrink-0" })}>
           See plans
@@ -65,22 +66,26 @@ async function ChatCard() {
     );
   }
 
+  // Telegram on Pro and Max; WhatsApp is a Max perk (src/lib/plans.ts). Follows the real plan, even for admins.
+  const max = usage.plan.id === "max";
   const hello = `Hi CourseIt team! (${user.email ?? user.id}, ${usage.admin ? "Admin" : usage.plan.name})`;
   return (
     <div className="flex flex-col gap-4 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
         <p className="text-[1.1rem] font-medium">Chat with us</p>
-        <p className="text-[0.92rem] text-ink-soft">As a {usage.admin ? "Max" : usage.plan.name} member you can message us directly. We reply on working days.</p>
+        <p className="text-[0.92rem] text-ink-soft">
+          {max ? "As a Max member, your messages are answered first." : "Message us on Telegram. WhatsApp and priority support come with Max."}
+        </p>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
-        {whatsapp && (
+        {max && whatsapp && (
           <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(hello)}`} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "gap-2" })}>
             <MessageCircle aria-hidden="true" className="size-4" />
             WhatsApp
           </a>
         )}
         {telegram && (
-          <a href={`https://t.me/${encodeURIComponent(telegram)}`} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", variant: "outline", className: "gap-2" })}>
+          <a href={`https://t.me/${encodeURIComponent(telegram)}`} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", variant: max && whatsapp ? "outline" : "default", className: "gap-2" })}>
             <Send aria-hidden="true" className="size-4" />
             Telegram
           </a>
@@ -99,9 +104,9 @@ const HELP: [string, React.ReactNode][] = [
     </>,
   ],
   [
-    "Hit your course limit?",
+    "Used up your hours?",
     <>
-      Free includes one course per account; on Pro and Max, each new course counts for 30 days. Joining a course someone already built is always free. See <Link href="/plans">Plans</Link> for more builds a month.
+      Plans are measured in hours of video built into new courses: {freePlan().coursesPerMonth ? `one free course a month, up to ${freePlan().maxHours} hours,` : `${freePlan().hoursPerMonth} hours a month on Free,`} renewing on the day you signed up; on Pro and Max, each build&apos;s hours come back after 30 days. Joining a course someone already built is always free. See <Link href="/plans">Plans</Link> for more hours.
     </>,
   ],
   ["A course didn't finish building", "Open it and choose Retry. It keeps every lesson that's done and only builds what's missing. Still stuck? Email us the link."],

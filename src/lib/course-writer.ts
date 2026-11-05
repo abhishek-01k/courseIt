@@ -1,4 +1,4 @@
-import { nemotronJson, type Nemotron, type Schema } from "@/lib/ai";
+import { nemotronJson, type Nemotron, type Schema, type Usage } from "@/lib/ai";
 import type { Chapter } from "@/types/youtube";
 
 // Everything here treats model output as untrusted: wrong types, out-of-range times and missing
@@ -10,6 +10,7 @@ export type PlannedLesson = { title: string; videoId: string; startSeconds: numb
 
 export type WrittenLesson = {
   model: Nemotron; // which Nemotron wrote it (a backup if the first choice was overloaded)
+  usage: Usage; // tokens it took, for measuring cost
   notes: string;
   questions: { prompt: string; options: string[]; answerIndex: number; explanation: string; replaySeconds: number }[];
 };
@@ -161,7 +162,17 @@ export function repairPlan(planned: PlannedLesson[], videos: Pick<VideoNotes, "i
   return out;
 }
 
-export async function writeLesson(courseTitle: string, lesson: PlannedLesson, videoNotes: string): Promise<WrittenLesson> {
+/**
+ * `think`: let the model reason before writing. Off by default: with it on, Nemotron 3.5 Super took 80–104s per
+ * lesson (Nov 2026), close to the 120s timeout, and slow lessons fell back to the weaker backup model. The lesson is
+ * built from the creator's own transcript, so speed matters more here. Measured by src/lib/lesson-speed.check.ts.
+ */
+export async function writeLesson(
+  courseTitle: string,
+  lesson: PlannedLesson,
+  videoNotes: string,
+  { think = false, model: writer = "super" as Nemotron, fallbacks, strict = false }: { think?: boolean; model?: Nemotron; fallbacks?: Nemotron[]; strict?: boolean } = {},
+): Promise<WrittenLesson> {
   // Only the notes inside this lesson (with a little context either side) go to the model.
   const lines = videoNotes.split("\n");
   const inside = lines.filter((line) => {
@@ -170,8 +181,8 @@ export async function writeLesson(courseTitle: string, lesson: PlannedLesson, vi
   });
   const source = inside.length >= 3 ? inside.join("\n") : videoNotes;
 
-  const { json: raw, model } = await nemotronJson(
-    "super",
+  const { json: raw, model, usage } = await nemotronJson(
+    writer,
     `You write one lesson of an online course from notes of a video lecture. Reply with JSON only:
 {"notes":string,"questions":[{"prompt":string,"options":[string,string,string,string],"answerIndex":integer,"explanation":string,"replaySeconds":integer}]}
 Rules:
@@ -182,6 +193,11 @@ Rules:
 - replaySeconds: the moment in the video (seconds) where this is explained, between ${lesson.startSeconds} and ${lesson.endSeconds}. The learner is sent there after a wrong answer.`,
     `Course: "${courseTitle}"\nLesson: "${lesson.title}" (${lesson.startSeconds}s–${lesson.endSeconds}s)\nGoal: ${lesson.summary}\n\nNotes:\n${source}`,
     LESSON,
+    // maxTokens: a lesson needs ~1,400 output tokens (largest good one seen ~1,500), but Ultra sometimes rambles until
+    // the limit (10% of lessons hit 16,000 in Nov 2026 tests: ~$0.05 and ~40s each before the retry). 4,000 keeps room
+    // for any real lesson while making a runaway cheap (~$0.012) and quick to retry.
+    // strict: false keeps the line breaks in the markdown notes (strict schema mode strips them).
+    { think, maxTokens: 4000, strict, ...(fallbacks && { fallbacks }) },
   );
 
   const o = (raw ?? {}) as Record<string, unknown>;
@@ -211,7 +227,7 @@ Rules:
     .filter((q) => q !== null);
 
   if (notes.length < 200 || questions.length < 3) throw new Error(`Lesson "${lesson.title}" came back incomplete`);
-  return { model, notes, questions };
+  return { model, usage, notes, questions };
 }
 
 export type PlacementQuestion = { prompt: string; options: string[]; answerIndex: number; explanation: string; lessonIds: string[] };

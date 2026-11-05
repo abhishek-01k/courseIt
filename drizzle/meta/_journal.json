@@ -162,6 +162,27 @@
       "when": 1793783659310,
       "tag": "0022_stale_mikhail_rasputin",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793822160259,
+      "tag": "0023_hard_red_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793831030401,
+      "tag": "0024_thin_morgan_stark",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793872944494,
+      "tag": "0025_brainy_bloodscream",
+      "breakpoints": true
     }
   ]
 }

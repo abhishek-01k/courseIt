@@ -1,17 +1,31 @@
 import { and, asc, count, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, placementQuestions, questions, users, videos } from "@/db/schema";
 import { packDays } from "@/lib/pace";
 
-export async function getCourseBySlug(slug: string) {
+/**
+ * A course by its URL, as `viewerId` may see it: someone else's private course is treated as not found, so every page
+ * built on this (course, lessons, build, placement) hides it without its own check.
+ */
+export async function getCourseBySlug(slug: string, viewerId: string | null | undefined) {
   const [course] = await db.select().from(courses).where(eq(courses.slug, slug));
-  return course ?? null;
+  if (!course || (course.isPrivate && course.createdBy !== viewerId)) return null;
+  return course;
 }
 
 export function getEnrolledCourses(userId: string, limit?: number) {
   const query = db
-    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds })
+    .select({
+      id: courses.id,
+      slug: courses.slug,
+      title: courses.title,
+      channel: courses.channel,
+      thumbnail: courses.thumbnail,
+      status: courses.status,
+      durationSeconds: courses.durationSeconds,
+      isPrivate: courses.isPrivate,
+    })
     .from(enrollments)
     .innerJoin(courses, eq(courses.id, enrollments.courseId))
     .where(eq(enrollments.userId, userId))
@@ -44,7 +58,7 @@ export function getCommunityCourses(q = "") {
     .from(courses)
     .leftJoin(users, eq(users.id, courses.createdBy))
     .leftJoin(enrollments, eq(enrollments.courseId, courses.id))
-    .where(and(ne(courses.status, "failed"), match))
+    .where(and(ne(courses.status, "failed"), eq(courses.isPrivate, false), match))
     .groupBy(courses.id, users.name)
     .orderBy(desc(learners), desc(courses.createdAt))
     .limit(60);
@@ -63,14 +77,14 @@ export async function getPopularCourses(limit = 6) {
     .from(courses)
     .leftJoin(users, eq(users.id, courses.createdBy))
     .leftJoin(enrollments, eq(enrollments.courseId, courses.id))
-    .where(eq(courses.status, "ready"))
+    .where(and(eq(courses.status, "ready"), eq(courses.isPrivate, false)))
     .groupBy(courses.id, users.name)
     .orderBy(desc(learners), desc(courses.createdAt))
     .limit(limit);
 }
 
 export async function countCommunityCourses() {
-  const [{ n }] = await db.select({ n: count() }).from(courses).where(ne(courses.status, "failed"));
+  const [{ n }] = await db.select({ n: count() }).from(courses).where(and(ne(courses.status, "failed"), eq(courses.isPrivate, false)));
   return n;
 }
 
@@ -168,7 +182,8 @@ export type CoursePlan = Awaited<ReturnType<typeof getCoursePlan>>;
 export async function getCoursePreview(slug: string) {
   "use cache";
   cacheLife("hours");
-  const course = await getCourseBySlug(slug);
+  cacheTag(`course-preview:${slug}`); // cleared when a private course goes public (makeCoursePublicAction)
+  const course = await getCourseBySlug(slug, null); // public courses only: this is what link previews and crawlers see
   if (!course) return null;
   const [plan, [{ quizzes }], [{ tests }]] = await Promise.all([
     getCoursePlan("", course.id), // no user: the default daily time

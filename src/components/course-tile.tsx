@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import StatusBadge from "@/components/status-badge";
@@ -26,6 +27,12 @@ export default function CourseTile({ course }: { course: CourseTileData }) {
           <StatusBadge tone={tone} className="absolute top-3 left-3">
             {label}
           </StatusBadge>
+        )}
+        {course.isPrivate && (
+          <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[0.75rem] font-medium text-[#0f1611]">
+            <Lock aria-hidden="true" className="size-3" />
+            Private
+          </span>
         )}
         <span className="absolute right-3 bottom-3 rounded-full bg-white px-2.5 py-1.5 font-mono text-label tracking-[0.07em] text-[#0f1611] tabular-nums">
           {formatDuration(course.durationSeconds)}

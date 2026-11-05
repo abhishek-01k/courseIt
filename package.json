@@ -15,7 +15,6 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
     "@base-ui/react": "^1.9.0",
-    "@google/genai": "^2.31.0",
     "@neondatabase/serverless": "^1.2.0",
     "@react-email/components": "^1.0.12",
     "@vercel/analytics": "^2.0.1",

@@ -8,7 +8,7 @@ const SAMPLES: { [T in Template]: Parameters<(typeof TEMPLATES)[T]>[0] } = {
   welcome: { name: "Abhishek Singh" },
   courseReady: { name: "Abhishek", title: "Andrej Karpathy: Intro to Large Language Models", slug: "sample", lessons: 26, missing: 0 },
   buildStopped: { name: "Abhishek", title: "Sam Altman on the future of AI", slug: "sample", canRetry: false },
-  planStarted: { name: "Abhishek", plan: "Pro", courses: 5, hours: 30 },
+  planStarted: { name: "Abhishek", plan: "Pro", hours: 20, maxHours: 10 },
   paymentFailed: { name: "Abhishek", plan: "Pro" },
   planEnding: { name: "Abhishek", plan: "Pro", endsAt: "2026-12-04T00:00:00Z" },
   renewalReminder: { name: "Abhishek", plan: "Max", renewsAt: "2026-11-11T00:00:00Z", amount: "₹9,999 (incl. GST)" },

@@ -1,9 +1,9 @@
 // Plans, limits and regional prices: change a number here and the pricing pages, checkout, the limit checks and
-// Settings all follow. Only *building* a new course counts. Joining a course someone already built is free on every
-// plan, because it costs nothing to serve.
+// Settings all follow. Plans are measured in hours of video built into new courses. Joining a course someone already
+// built is free on every plan and never uses hours, because it costs nothing to serve.
 //
-// Limits are sized from build costs (about $0.08 of AI, captions and search per hour of video), so even a learner
-// who uses every hour of their plan costs less than the plan brings in, in every region.
+// Hours are sized from measured build costs (about $0.085 of AI, captions and search per hour of video, Nov 2026), so
+// a learner who uses every hour still leaves more than half of the plan's price after tax and fees, in every region.
 export type PlanId = "free" | "pro" | "max";
 export type Interval = "month" | "year";
 export type Region = "in" | "gb" | "us";
@@ -13,11 +13,11 @@ export type Plan = {
   name: string;
   tagline: string;
   price: Record<Region, Record<Interval, number>>; // in each region's currency; yearly is charged once a year
-  coursesPerMonth: number; // new courses in any 30 days (on Free: ever, see `lifetime`)
-  lifetime: boolean; // Free: its 1 course is once per account, not every month
-  hoursPerMonth: number; // total video hours those courses may add up to, in any 30 days
+  hoursPerMonth: number; // hours of video built into new courses each month (Free: renews on the sign-up day)
   maxHours: number; // longest video or playlist one course can be built from
   perks: string[];
+  launch?: boolean; // the launch offer that stands in for Free until payments are live (LAUNCH_OFFER)
+  coursesPerMonth?: number; // a cap on new courses per cycle on top of the hours (launch offer only)
 };
 
 /**
@@ -36,41 +36,69 @@ export const regionFor = (country: string | null | undefined): Region => (countr
 export const formatPrice = (amount: number, region: Region) =>
   new Intl.NumberFormat(REGIONS[region].locale, { style: "currency", currency: REGIONS[region].currency, maximumFractionDigits: 0 }).format(amount);
 
+// Keep taglines to one short line so every card's price sits at the same height, and perks to a few words.
 export const PLANS: Record<PlanId, Plan> = {
   free: {
     id: "free",
     name: "Free",
-    tagline: "Build your first course free.",
+    tagline: "Try it out, no card needed.",
     price: { in: { month: 0, year: 0 }, gb: { month: 0, year: 0 }, us: { month: 0, year: 0 } },
-    coursesPerMonth: 1,
-    lifetime: true,
-    hoursPerMonth: 6,
-    maxHours: 6,
-    perks: ["Join any course already built, free forever", "Notes, quizzes and placement tests", "Roadmaps and daily plans"],
+    hoursPerMonth: 5,
+    maxHours: 5,
+    perks: ["Join any built course, free", "Courses up to 5 hours", "Notes, quizzes and placement tests", "Daily plan and roadmaps"],
   },
   pro: {
     id: "pro",
     name: "Pro",
-    tagline: "For learning something every week.",
+    tagline: "For learning every week.",
     price: { in: { month: 499, year: 4999 }, gb: { month: 15, year: 149 }, us: { month: 19, year: 189 } },
-    coursesPerMonth: 5,
-    lifetime: false,
-    hoursPerMonth: 30,
+    hoursPerMonth: 20,
     maxHours: 10,
-    perks: ["Everything in Free", "Long playlists, up to 10 hours each", "Retry any course or lesson that didn't build", "Your builds go first when it's busy", "Chat support on WhatsApp and Telegram"],
+    perks: ["Everything in Free", "Courses up to 10 hours", "Your courses stay private", "Retry failed builds", "Priority course building", "Telegram support"],
   },
   max: {
     id: "max",
     name: "Max",
-    tagline: "For heavy learners and teams of one.",
+    tagline: "For whole subjects and bootcamps.",
     price: { in: { month: 999, year: 9999 }, gb: { month: 39, year: 389 }, us: { month: 49, year: 489 } },
-    coursesPerMonth: 20,
-    lifetime: false,
-    hoursPerMonth: 100,
+    hoursPerMonth: 40,
     maxHours: 20,
-    perks: ["Everything in Pro", "Full courses, up to 20 hours each", "Top build priority", "Early access to new features"],
+    perks: ["Everything in Pro", "Courses up to 20 hours", "Highest priority building", "WhatsApp support", "Priority support", "Early access to new features"],
   },
 };
+
+/**
+ * Whether learners can pay. Off until Dodo approves the business and DODO_PAYMENTS_ENVIRONMENT=live_mode is set:
+ * paid plans show "Coming soon" and checkout is closed. Set DODO_ALLOW_TEST_CHECKOUT=1 locally to try test-mode
+ * checkout; never in production, where it would let anyone get a paid plan with a test card.
+ */
+export const paymentsLive = () =>
+  process.env.DODO_PAYMENTS_ENVIRONMENT === "live_mode" || (process.env.NODE_ENV !== "production" && process.env.DODO_ALLOW_TEST_CHECKOUT === "1");
+
+/**
+ * Launch offer: until payments are live, nobody can upgrade, so a learner without a paid plan gets ONE new course a
+ * month, of up to 10 hours (a video, or a playlist adding up to 10 hours at most), renewing on the sign-up day like
+ * Free. It switches to the normal plans by itself the moment payments go live.
+ */
+export const LAUNCH_OFFER: Plan = {
+  ...PLANS.free,
+  hoursPerMonth: 10,
+  maxHours: 10,
+  coursesPerMonth: 1,
+  launch: true,
+  perks: PLANS.free.perks.map((p) => (p === "Courses up to 5 hours" ? "One course up to 10 hours" : p)),
+};
+
+/** What a learner without a paid plan gets right now: Free, or the launch offer before payments are live. */
+export const freePlan = () => (paymentsLive() ? PLANS.free : LAUNCH_OFFER);
+
+/** Hours as a person reads them: 5 → "5h", 3.33 → "3h 20m", 0.5 → "30m". */
+export function formatHours(hours: number) {
+  const minutes = Math.max(0, Math.floor(hours * 60));
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`;
+}
 
 export const PAID_PLANS = [PLANS.pro, PLANS.max];
 

@@ -12,7 +12,7 @@ import { getPlacementTest } from "./queries";
 export default async function TestPage({ params }: { params: Promise<{ slug: string }> }) {
   const [{ slug }, session] = await Promise.all([params, auth()]);
   if (!session?.user?.id) redirect("/login");
-  const course = await getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug, session?.user?.id);
   if (!course) notFound();
   const test = await getPlacementTest(course.id);
   const building = course.status !== "ready" && course.status !== "failed";

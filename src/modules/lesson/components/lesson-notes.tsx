@@ -5,12 +5,17 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { Reading } from "@/lib/tavily";
+import FindReading from "./find-reading";
 
 // Nemotron writes math as \( … \) and \[ … \]; remark-math reads $ … $ and $$ … $$.
 const toDollars = (md: string) =>
   md.replace(/\\\[([\s\S]+?)\\\]/g, (_, m) => `$$${m}$$`).replace(/\\\(([\s\S]+?)\\\)/g, (_, m) => `$${m}$`);
 
-export default function LessonNotes({ markdown, reading = [] }: { markdown: string; reading?: Reading[] }) {
+/**
+ * `reading`: links found so far. `searched`: a search already ran (show "none found" instead of the button).
+ * `lessonId`: set when the viewer may search (signed in), which shows the "Find further reading" button.
+ */
+export default function LessonNotes({ markdown, reading = [], searched = false, lessonId }: { markdown: string; reading?: Reading[]; searched?: boolean; lessonId?: string }) {
   return (
     <>
     <div className="flex flex-col gap-3 leading-relaxed text-ink [&_code]:rounded [&_code]:bg-lime-soft/60 [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.88em] [&_h2]:mt-4 [&_h2]:text-[1.45rem] [&_h3]:mt-2 [&_h3]:text-[1.15rem] [&_li]:ml-5 [&_ol]:list-decimal [&_pre]:overflow-x-auto [&_pre]:rounded-2xl [&_pre]:bg-[#0f1611] [&_pre]:p-4 [&_pre]:text-[#f1f3ea] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-semibold [&_ul]:list-disc">
@@ -35,7 +40,22 @@ export default function LessonNotes({ markdown, reading = [] }: { markdown: stri
             </li>
           ))}
         </ul>
-        <p className="text-[0.8rem] text-ink-soft">Found on the web by Tavily while this lesson was written.</p>
+        <p className="text-[0.8rem] text-ink-soft">Found on the web by Tavily.</p>
+      </section>
+    )}
+    {reading.length === 0 && (searched || lessonId) && (
+      <section aria-labelledby="reading-title" className="mt-8 flex flex-col gap-2.5 border-t pt-5">
+        <h2 id="reading-title" className="text-[1.15rem] font-medium">
+          Further reading
+        </h2>
+        {searched ? (
+          <p className="text-[0.9rem] text-ink-soft">No further reading was found for this lesson.</p>
+        ) : (
+          <>
+            <p className="text-[0.9rem] text-ink-soft">Find a few articles and docs that go deeper on this lesson.</p>
+            <FindReading lessonId={lessonId!} />
+          </>
+        )}
       </section>
     )}
     </>

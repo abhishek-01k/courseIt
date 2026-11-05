@@ -22,7 +22,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   // Signed out is fine: a shared link shows the course; anything that saves asks to sign in first.
   const userId = session?.user?.id ?? null;
 
-  const course = await getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug, session?.user?.id);
   if (!course) notFound();
   const id = course.id;
   const [plan, steps, test, placement, enrolled, roadmaps] = await Promise.all([
@@ -52,7 +52,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       <CourseHeader
         course={course}
         lessonCount={plan.lessons.length}
-        menu={<CourseMenu slug={slug} courseId={id} courseTitle={course.title} signedIn={Boolean(userId)} enrolled={enrolled} roadmaps={roadmaps} />}
+        menu={<CourseMenu slug={slug} courseId={id} courseTitle={course.title} signedIn={Boolean(userId)} enrolled={enrolled} roadmaps={roadmaps} isPrivate={course.isPrivate} />}
       />
 
       {building && <BuildStatus steps={steps} now={new Date()} />}

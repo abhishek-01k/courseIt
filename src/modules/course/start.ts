@@ -216,9 +216,10 @@ export async function startCourse(userId: string, url: string): Promise<Refusal 
   }
 
   // Two builds started at the same moment (two tabs) could each pass the check above. Count again now that this one
-  // is saved, and back it out if together they went over the plan.
+  // is saved, and back it out if together they went over the plan. Only courses started up to this one count, so the
+  // earlier of the two always survives and only the later one is backed out.
   if (!usage.unlimited) {
-    const after = await readUsage(userId);
+    const after = await readUsage(userId, courseId);
     if (after.hoursUsed > after.plan.hoursPerMonth + 0.01 || (after.plan.coursesPerMonth && after.coursesUsed > after.plan.coursesPerMonth)) {
       await db.delete(courses).where(eq(courses.id, courseId));
       return { error: "Another course you started at the same time used up your hours. Wait for it to finish, then try again." };

@@ -1,7 +1,8 @@
-import { and, asc, count, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
+import type { Region } from "@/lib/plans";
+import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
-import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, placementQuestions, questions, users, videos } from "@/db/schema";
+import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, placementQuestions, questions, users, videos, videoSegments } from "@/db/schema";
 import { packDays } from "@/lib/pace";
 
 /**
@@ -68,20 +69,56 @@ export function getCommunityCourses(q = "") {
  * The most-taken ready courses, for "Popular courses" on the landing page and a new learner's Today.
  * Cached for an hour, so the landing page stays fast and doesn't hit the database on every visit.
  */
-export async function getPopularCourses(limit = 6) {
+export async function getPopularCourses(limit = 6, region: Region = "in") {
   "use cache";
   cacheLife("hours");
   const learners = count(enrollments.userId);
-  return db
-    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds, addedBy: users.name, learners })
+  const ranked = await db
+    .select({
+      id: courses.id,
+      slug: courses.slug,
+      title: courses.title,
+      channel: courses.channel,
+      thumbnail: courses.thumbnail,
+      status: courses.status,
+      durationSeconds: courses.durationSeconds,
+      addedBy: users.name,
+      learners,
+      // Captions in an Indian script (Devanagari through Malayalam): the video is taught in that language. Hindi-taught
+      // courses measured ~75–80% such characters, English ones 0% (Nov 2026). Only the start of each transcript is read.
+      indianScript: sql<boolean>`exists (select 1 from ${courseVideos} cv join ${videoSegments} vs on vs.video_id = cv.video_id
+        where cv.course_id = ${courses.id} and length(regexp_replace(substr(vs.notes, 1, 3000), '[^ऀ-ൿ]', '', 'g')) > 300)`,
+      // A few old courses were built without any transcript: their language can't be told (and their notes may be
+      // guesswork), so they aren't put in front of new visitors outside India.
+      transcript: sql<boolean>`exists (select 1 from ${courseVideos} cv join ${videoSegments} vs on vs.video_id = cv.video_id where cv.course_id = ${courses.id})`,
+    })
     .from(courses)
     .leftJoin(users, eq(users.id, courses.createdBy))
     .leftJoin(enrollments, eq(enrollments.courseId, courses.id))
     .where(and(eq(courses.status, "ready"), eq(courses.isPrivate, false)))
     .groupBy(courses.id, users.name)
     .orderBy(desc(learners), desc(courses.createdAt))
-    .limit(limit);
+    .limit(region === "in" ? limit : limit * 6);
+  // Outside India, lead with courses an English-speaking visitor can take: skip ones taught in Hindi or another Indian
+  // language (by their captions or title), or made for Indian exams. India sees the plain most-taken list.
+  const shown = region === "in" ? ranked : ranked.filter((c) => c.transcript && !c.indianScript && !INDIA_ONLY.test(`${c.title} ${c.channel}`));
+  return shown.slice(0, limit).map(({ id, slug, title, channel, thumbnail, status, durationSeconds, addedBy, learners }) => ({
+    id,
+    slug,
+    title,
+    channel,
+    thumbnail,
+    status,
+    durationSeconds,
+    addedBy,
+    learners,
+  }));
 }
+
+// Titles and channels that are clearly for Indian learners: a language named in the title, an Indian script, or an
+// Indian exam. Catches Hindi courses whose captions are in English letters; misses only mean a course still shows.
+const INDIA_ONLY =
+  /\b(hindi|hinglish|urdu|telugu|tamil|marathi|bangla|bengali|gujarati|kannada|malayalam|punjabi|odia)\b|[\u0900-\u0DFF]|\b(gate|upsc|ssc|ugc[ -]?net|dsssb|neet|jee|cbse|ias|ips|police constable|sarkari|bank po|ibps)\b/i;
 
 export async function countCommunityCourses() {
   const [{ n }] = await db.select({ n: count() }).from(courses).where(and(ne(courses.status, "failed"), eq(courses.isPrivate, false)));

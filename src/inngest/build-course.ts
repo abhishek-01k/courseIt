@@ -103,12 +103,13 @@ export const buildCourse = inngest.createFunction(
 
     // resume: keep the plan and the lessons already written; only write what's missing.
     const { courseId, resume = false, plan } = event.data as { courseId: string; resume?: boolean; plan?: string };
-    // Who writes the lessons. Pro and Max (and admins, sent as "max"): Nemotron 3 Ultra, the fastest and most
-    // reliable in benchmarks (24/24 lessons, avg 9s, Nov 2026), with Super then Lightning as backups. Free: Super only,
-    // no backup; a lesson Super can't write is left missing and the course offers Retry (or an upgrade once payments
-    // are live). Measured with src/lib/lesson-speed.check.ts.
+    // Who writes the lessons. Pro and Max (and admins, sent as "max"): Nemotron 3 Ultra, the most reliable in benchmarks
+    // (8/8 real lessons, avg 6s, $0.0063 each, 5 Nov 2026), with Lightning then Super as backups (Super last while it's slow). Free: Lightning, fast
+    // and cheap (7/8, avg 7s, $0.0004 each, ~400 words), with Ultra for the odd lesson Lightning can't write. Free used
+    // to get Super, but Nebius served Nemotron 3.5 Super at 5–8 tokens/s on 5 Nov (others: 140–230), so Free lessons
+    // took minutes and most failed. Measured with src/lib/lesson-speed.check.ts.
     const paid = plan === "pro" || plan === "max";
-    const writer = paid ? ({ model: "ultra", fallbacks: ["super", "lightning"] } as const) : ({ model: "super", fallbacks: [] } as const);
+    const writer = paid ? ({ model: "ultra", fallbacks: ["lightning", "super"] } as const) : ({ model: "lightning", fallbacks: ["ultra"] } as const);
 
     if (typeof courseId !== "string" || !courseId.trim()) {
       throw new Error(

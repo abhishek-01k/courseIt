@@ -21,11 +21,15 @@ export async function GET(request: NextRequest) {
   const plan = request.nextUrl.searchParams.get("plan") as PlanId;
   const interval = (request.nextUrl.searchParams.get("interval") === "year" ? "year" : "month") as Interval;
   // Same region as the prices the learner was shown. A region without its products set falls back to US prices.
-  const region = await currentRegion();
-  const productId = plan === "pro" || plan === "max" ? (productIdFor(plan, interval, region) ?? productIdFor(plan, interval, "us")) : null;
+  const visitor = await currentRegion();
+  const paid = plan === "pro" || plan === "max";
+  const region = paid && productIdFor(plan, interval, visitor) ? visitor : "us";
+  const productId = paid ? productIdFor(plan, interval, region) : null;
   if (!productId) redirect("/plans");
 
   const usage = await usageFor(userId);
+  // Already paying: Pro → Max is a plan change (confirmed on /plans), anything else is managed in Dodo's portal.
+  if (usage.plan.id === "pro" && plan === "max" && usage.canManage) redirect("/plans?upgrade=max");
   if (usage.plan.id !== "free" && usage.canManage) redirect("/api/billing/portal");
 
   const [user] = await db.select({ email: users.email, name: users.name, dodoCustomerId: users.dodoCustomerId }).from(users).where(eq(users.id, userId));
@@ -34,6 +38,7 @@ export async function GET(request: NextRequest) {
   try {
     ({ checkout_url: url } = await createCheckout({
       productId,
+      region,
       customer: user?.dodoCustomerId ? { customer_id: user.dodoCustomerId } : { email: user?.email ?? "", name: user?.name ?? undefined },
       returnUrl: `${origin}/api/billing/return`,
       cancelUrl: `${origin}/plans`,

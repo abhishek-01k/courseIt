@@ -226,7 +226,16 @@ Rules:
     })
     .filter((q) => q !== null);
 
-  if (notes.length < 200 || questions.length < 3) throw new Error(`Lesson "${lesson.title}" came back incomplete`);
+  if (notes.length < 200 || questions.length < 3) {
+    // A short or half-empty lesson goes to the next model in the list, like a busy one does (Lightning sometimes stops
+    // early; Free lessons then move to Ultra instead of retrying Lightning). With no backup left, the step retries.
+    const rest = (fallbacks ?? []).filter((m) => m !== model);
+    if (rest.length) {
+      console.warn(`[nemotron] ${model} wrote an incomplete lesson "${lesson.title}"; trying ${rest[0]}`);
+      return writeLesson(courseTitle, lesson, videoNotes, { think, model: rest[0], fallbacks: rest.slice(1), strict });
+    }
+    throw new Error(`Lesson "${lesson.title}" came back incomplete`);
+  }
   return { model, usage, notes, questions };
 }
 

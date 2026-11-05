@@ -183,6 +183,13 @@
       "when": 1793872944494,
       "tag": "0025_brainy_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793891830794,
+      "tag": "0026_delete_supadata_failed_courses",
+      "breakpoints": true
     }
   ]
 }

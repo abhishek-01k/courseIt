@@ -5,7 +5,7 @@ import { courses, lessons, users } from "@/db/schema";
 import { isAdmin } from "@/lib/admin";
 import { getSubscription } from "@/lib/dodo";
 import { queueEmail } from "@/inngest/send-email";
-import { freePlan, PLANS, paymentsLive, type Plan, planForProduct } from "@/lib/plans";
+import { freePlan, HOURS_COUNT_FROM, PLANS, paymentsLive, type Plan, planForProduct } from "@/lib/plans";
 
 // Paid access while the subscription is active or retrying a payment; after a cancel, until the paid
 // period ends. on_hold, failed, expired, paused: back to Free.
@@ -50,8 +50,12 @@ export type Usage = {
   canManage: boolean; // has a Dodo customer, so the billing portal opens
 };
 
-/** The learner's plan and hours, read fresh. Most callers want usageFor (cached per request). */
-export async function readUsage(userId: string): Promise<Usage> {
+/**
+ * The learner's plan and hours, read fresh. Most callers want usageFor (cached per request).
+ * `upTo`: count only courses started no later than this course (itself included). Used by the re-check after saving a
+ * course, so when two builds start at once only the later one goes over and is backed out, never both.
+ */
+export async function readUsage(userId: string, upTo?: string): Promise<Usage> {
   const [u] = await db
     .select({
       email: users.email,
@@ -69,7 +73,9 @@ export async function readUsage(userId: string): Promise<Usage> {
   // Free: hours renew each month on the sign-up day, and unused ones don't carry over. Paid: a rolling 30 days, so
   // each build's hours come back 30 days after it. Hours used on Free still count after an upgrade, and the other way.
   const cycle = plan.id === "free" ? monthlyCycle(u?.createdAt ?? new Date()) : null;
-  const since = cycle?.start ?? new Date(Date.now() - MONTH_MS);
+  const cycleStart = cycle?.start ?? new Date(Date.now() - MONTH_MS);
+  // Builds from before the hours-based plans launched don't count (see HOURS_COUNT_FROM).
+  const since = cycleStart > HOURS_COUNT_FROM ? cycleStart : HOURS_COUNT_FROM;
   // A failed build counts only the lessons it finished (often none), so a build that breaks doesn't eat the
   // learner's hours. Everything else (queued, building, ready) counts in full from the moment it starts.
   const builtSeconds = sql<number>`case when ${courses.status} <> 'failed' then ${courses.durationSeconds}
@@ -82,6 +88,7 @@ export async function readUsage(userId: string): Promise<Usage> {
         eq(courses.createdBy, userId),
         gte(courses.createdAt, since),
         or(ne(courses.status, "failed"), sql`exists (select 1 from ${lessons} where ${lessons.courseId} = ${courses.id} and ${lessons.ready})`),
+        upTo ? sql`(${courses.createdAt}, ${courses.id}) <= (select c.created_at, c.id from course c where c.id = ${upTo})` : undefined,
       ),
     );
   const hours = (seconds ?? 0) / 3600;

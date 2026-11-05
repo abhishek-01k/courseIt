@@ -42,6 +42,8 @@ export default function PlanCards({ region, current, live }: { region: Region; c
         {plansFor(live).map((plan) => {
           const featured = plan.id === "pro";
           const price = plan.price[region][interval];
+          // Monthly only: the early-user price next to the price it goes up to later (yearly already shows its saving).
+          const later = interval === "month" ? plan.laterPrice?.[region] : undefined;
           return (
             <li
               key={plan.id}
@@ -55,6 +57,16 @@ export default function PlanCards({ region, current, live }: { region: Region; c
                 {featured && <span className="rounded-full bg-lime-soft px-2.5 py-1 text-[0.75rem] font-medium text-moss">Most popular</span>}
               </div>
               <p className="-mt-3 text-[0.92rem] text-ink-soft">{plan.tagline}</p>
+              {/* Monthly: the price it goes up to later, crossed out. Free keeps an empty line so the prices line up. */}
+              {interval === "month" && (
+                <p aria-hidden={!later} className={cn("-mb-3 flex items-center gap-2 text-[0.85rem]", !later && "invisible")}>
+                  <s className="text-ink-soft tabular-nums">
+                    <span className="sr-only">Later price: </span>
+                    {later ? formatPrice(later, region) : "–"}
+                  </s>
+                  <span className="whitespace-nowrap rounded-full bg-lime-soft px-2 py-0.5 font-medium text-moss">Early-user price</span>
+                </p>
+              )}
               <p className="flex items-baseline gap-1.5">
                 <span className="font-display text-[2.6rem] leading-none tabular-nums">{formatPrice(price, region)}</span>
                 <span className="text-ink-soft">{price === 0 ? "forever" : interval === "month" ? "/ month" : "/ year"}</span>
@@ -93,6 +105,11 @@ export default function PlanCards({ region, current, live }: { region: Region; c
                 <Link href="/api/billing/portal" prefetch={false} className={buttonVariants({ size: "lg", variant: "outline", className: "w-full" })}>
                   Manage billing
                 </Link>
+              ) : current === "pro" && plan.id === "max" ? (
+                // A full page load: the in-app router can serve /plans from its 30s cache without the confirm panel.
+                <a href="/plans?upgrade=max" className={buttonVariants({ size: "lg", className: "w-full" })}>
+                  Upgrade to Max
+                </a>
               ) : (
               <Link
                 href={plan.id === "free" ? "/new" : `/api/billing/checkout?plan=${plan.id}&interval=${interval}`}

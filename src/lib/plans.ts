@@ -16,6 +16,7 @@ export type Plan = {
   hoursPerMonth: number; // hours of video built into new courses each month (Free: renews on the sign-up day)
   maxHours: number; // longest video or playlist one course can be built from
   perks: string[];
+  laterPrice?: Record<Region, number>; // the monthly price after the early-user price ends, shown crossed out; make it real when prices go up
   launch?: boolean; // the launch offer that stands in for Free until payments are live (LAUNCH_OFFER)
   coursesPerMonth?: number; // a cap on new courses per cycle on top of the hours (launch offer only)
 };
@@ -52,6 +53,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Pro",
     tagline: "For learning every week.",
     price: { in: { month: 499, year: 4999 }, gb: { month: 15, year: 149 }, us: { month: 19, year: 189 } },
+    laterPrice: { in: 799, gb: 24, us: 29 },
     hoursPerMonth: 20,
     maxHours: 10,
     perks: ["Everything in Free", "Courses up to 10 hours", "Your courses stay private", "Retry failed builds", "Priority course building", "Telegram support"],
@@ -61,6 +63,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Max",
     tagline: "For whole subjects and bootcamps.",
     price: { in: { month: 999, year: 9999 }, gb: { month: 39, year: 389 }, us: { month: 49, year: 489 } },
+    laterPrice: { in: 1599, gb: 59, us: 79 },
     hoursPerMonth: 40,
     maxHours: 20,
     perks: ["Everything in Pro", "Courses up to 20 hours", "Highest priority building", "WhatsApp support", "Priority support", "Early access to new features"],
@@ -88,6 +91,13 @@ export const LAUNCH_OFFER: Plan = {
   launch: true,
   perks: PLANS.free.perks.map((p) => (p === "Courses up to 5 hours" ? "One course up to 10 hours" : p)),
 };
+
+/**
+ * Hours count only courses built from this moment: the day hours-based plans launched. Courses built before it were
+ * built under the old "one free course" rules, so everyone starts the new plans with their full hours. Their old
+ * courses stay theirs and keep working. Safe to leave in place: after 30 days it no longer changes anything.
+ */
+export const HOURS_COUNT_FROM = new Date("2026-11-05T00:00:00Z");
 
 /** What a learner without a paid plan gets right now: Free, or the launch offer before payments are live. */
 export const freePlan = () => (paymentsLive() ? PLANS.free : LAUNCH_OFFER);

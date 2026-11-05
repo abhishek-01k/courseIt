@@ -1,9 +1,11 @@
 import CourseTile from "@/components/course-tile";
+import { currentRegion } from "@/lib/region";
 import { getPopularCourses } from "@/modules/course/queries";
 
 // For a new learner with nothing yet: real, ready courses from Community, most-taken first.
 export default async function PopularCourses() {
-  const popular = await getPopularCourses();
+  // Visitors outside India see English courses first (see getPopularCourses).
+  const popular = await getPopularCourses(6, await currentRegion());
   if (!popular.length) return null;
   return (
     <section id="popular" aria-labelledby="popular-title" className="flex scroll-mt-20 flex-col gap-4">

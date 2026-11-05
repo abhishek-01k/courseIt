@@ -6,6 +6,9 @@ import { auth } from "@/lib/auth";
 import { buildBlock, paymentsLive, shortDate, usageFor } from "@/lib/billing";
 import { formatHours } from "@/lib/plans";
 import { currentRegion } from "@/lib/region";
+import { buttonVariants } from "@/components/ui/button";
+import { PLANS } from "@/lib/plans";
+import { upgradeToMaxAction } from "./actions";
 import PlanCards from "./components/plan-cards";
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
@@ -25,6 +28,8 @@ async function Plans({ searchParams }: { searchParams: Search }) {
     ? `Pro and Max are coming soon. Until then, everyone gets a launch offer: one free course a month, up to ${plan.maxHours} hours long (a video, or a playlist adding up to ${plan.maxHours} hours).`
     : params.error === "checkout"
       ? "We couldn't open the checkout. Try again in a moment."
+      : params.error === "upgrade"
+        ? "We couldn't move you to Max, so nothing changed and nothing was charged. Check your card in Manage billing, or try again in a moment."
       : usage.unlimited
         ? null // no limits apply (admin), so a limit message would be wrong
         : params.reason === "limit" && blocked
@@ -43,6 +48,24 @@ async function Plans({ searchParams }: { searchParams: Search }) {
         <p role="status" className="rounded-2xl bg-lime-soft px-4 py-3 text-[0.95rem] text-pill-ink">
           {notice}
         </p>
+      )}
+      {params.upgrade === "max" && plan.id === "pro" && usage.canManage && (
+        <form action={upgradeToMaxAction} className="flex flex-col gap-3 rounded-2xl bg-surface p-5 shadow-[0_0_0_2px_var(--moss)]">
+          <p className="text-[1.05rem] font-medium">Move to Max now?</p>
+          <p className="text-[0.95rem] text-ink-soft">
+            You get {PLANS.max.hoursPerMonth} hours a month and courses up to {PLANS.max.maxHours} hours straight away, on the same billing period.
+            Your saved card is charged the difference for the rest of this period now; after that, Max renews at its usual price. If the payment
+            doesn&apos;t go through, you stay on Pro and nothing is charged.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" className={buttonVariants({ size: "lg" })}>
+              Upgrade to Max
+            </button>
+            <a href="/plans" className={buttonVariants({ size: "lg", variant: "outline" })}>
+              Not now
+            </a>
+          </div>
+        </form>
       )}
       <p className="text-ink-soft">
         You&apos;re on <strong className="font-medium text-ink">{usage.admin ? "Admin · unlimited" : plan.name}</strong>

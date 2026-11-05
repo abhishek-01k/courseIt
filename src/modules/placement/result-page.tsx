@@ -16,7 +16,7 @@ export default async function ResultPage({ params }: { params: Promise<{ slug: s
   const [{ slug }, session] = await Promise.all([params, auth()]);
   const userId = session?.user?.id;
   if (!userId) redirect("/login");
-  const course = await getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug, session?.user?.id);
   if (!course) notFound();
   const [plan, result] = await Promise.all([getCoursePlan(userId, course.id), getPlacementResult(userId, course.id)]);
   if (!result) redirect(`/build/${slug}/test`);

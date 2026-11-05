@@ -1,12 +1,13 @@
 export type Reading = { title: string; url: string };
 
 /**
- * Tavily web search: a few articles or docs that teach a lesson's topic, for "Further reading" under its
- * notes. Optional extra: no key, a slow answer or an error returns [] and the lesson is written anyway.
+ * Tavily web search: a few articles or docs that teach a lesson's topic, for "Further reading" under its notes.
+ * Run only when a learner asks (findReadingAction), never during the build: 1 credit per search. Returns null when
+ * Tavily couldn't be reached (so the search can be tried again), [] when it found nothing usable.
  */
-export async function findReading(query: string): Promise<Reading[]> {
+export async function findReading(query: string): Promise<Reading[] | null> {
   const key = process.env.TAVILY_API_KEY;
-  if (!key) return [];
+  if (!key) return null;
   try {
     const res = await fetch("https://api.tavily.com/search", {
       method: "POST",
@@ -24,6 +25,6 @@ export async function findReading(query: string): Promise<Reading[]> {
       .slice(0, 3);
   } catch (error) {
     console.error(error);
-    return [];
+    return null;
   }
 }

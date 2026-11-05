@@ -12,7 +12,7 @@ export default function TermsPage() {
       <LegalSection title="1. The service">
         <p>
           CourseIt turns YouTube videos and playlists into courses with lessons, quizzes and a study plan. It is operated by {LEGAL.operator}. Joining a
-          course that has already been built is free. Building new courses is limited by plan: Free includes one course per account, and paid plans
+          course that has already been built is free. Building new courses is limited by plan, in hours of video per month: Free includes 5 hours a month, and paid plans
           (Pro and Max, see <Link href="/pricing">Pricing</Link>) are billed monthly or yearly through Dodo Payments, our merchant of record, until you
           cancel. Cancelling stops the next renewal; you keep your plan until the end of the period you paid for. Prices depend on your country and include
           GST in India and VAT in the UK; elsewhere, tax is added at checkout. Refunds follow our <Link href="/refunds">Refund policy</Link>. Features and limits may change, with

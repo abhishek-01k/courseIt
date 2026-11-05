@@ -60,8 +60,7 @@ export default function PrivacyPage() {
           <li>To keep CourseIt secure, fix problems and improve features.</li>
         </ul>
         <p>
-          <strong>AI processing.</strong> To build a course, we fetch the public video&apos;s captions from Supadata (or, if it has none, Google Gemini
-          watches the public video), and send the transcript to NVIDIA Nemotron models running on Nebius Token Factory. Lesson and course titles are sent
+          <strong>AI processing.</strong> To build a course, we fetch the public video&apos;s captions from Supadata and send the transcript to NVIDIA Nemotron models running on Nebius Token Factory. Lesson and course titles are sent
           to Tavily to find further reading. We send course content for these steps, not your name or email.
         </p>
         <p>
@@ -76,7 +75,7 @@ export default function PrivacyPage() {
         <p>Only with services that help us run CourseIt, under their own privacy terms:</p>
         <ul className="flex flex-col gap-2">
           <li>Sign-in providers: Google, GitHub and X.</li>
-          <li>AI, captions and search: Nebius (Token Factory), Google (Gemini), Supadata and Tavily.</li>
+          <li>AI, captions and search: Nebius (Token Factory), Supadata and Tavily.</li>
           <li>Payments: Dodo Payments, which receives your name and email and handles your card details. We never see or store card numbers.</li>
           <li>Email: Resend, which delivers account emails such as &quot;your course is ready&quot; and billing notices.</li>
           <li>Hosting and storage providers that run our website and database.</li>

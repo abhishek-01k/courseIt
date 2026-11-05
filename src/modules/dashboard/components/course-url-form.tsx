@@ -2,7 +2,7 @@
 
 import { Lock } from "lucide-react";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { act } from "@/components/toaster";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { buildCourseAction } from "@/modules/course/actions";
@@ -36,12 +36,26 @@ function Blocked({ title, detail, upgrade }: BuildBlock) {
   );
 }
 
-/** `caption`: a short line under the form (e.g. "Already built by someone? It opens instantly"), hidden when locked. */
-export default function CourseUrlForm({ blocked, caption }: { blocked?: BuildBlock | null; caption?: string }) {
+/**
+ * `caption`: a short line under the form (e.g. "Already built by someone? It opens instantly"), hidden when locked.
+ * `isPaid`: Pro and Max courses are private by default, Free ones are public; a short line says which. Undefined hides it.
+ */
+export default function CourseUrlForm({ blocked, caption, isPaid }: { blocked?: BuildBlock | null; caption?: string; isPaid?: boolean }) {
+  const sharedNote =
+    isPaid === undefined ? null : isPaid ? "Your course stays private. You can make it public later." : "Courses built on Free are shared in Community. Pro and Max keep them private.";
   const [state, action, pending] = useActionState<BuildCourseState, FormData>(
     async (prev, data) => (await act(() => buildCourseAction(prev, data), "Couldn't start your course.")) ?? prev,
     {},
   );
+
+  // The reason a link was refused shows under the box for 8 seconds, then clears (the toast also fades by itself).
+  const [dismissed, setDismissed] = useState<BuildCourseState | null>(null);
+  useEffect(() => {
+    if (!state.error) return;
+    const timer = setTimeout(() => setDismissed(state), 8000);
+    return () => clearTimeout(timer);
+  }, [state]);
+  const shown = state.error && dismissed !== state ? state.error : null;
 
   if (blocked) return <Blocked {...blocked} />;
 
@@ -67,6 +81,13 @@ export default function CourseUrlForm({ blocked, caption }: { blocked?: BuildBlo
             {pending ? "Checking the link…" : "Build my course"}
           </Button>
         </div>
+        {shown && !pending && (
+          <p role="alert" className="rounded-xl bg-warn-bg px-3.5 py-2.5 text-center text-[0.9rem] text-warn-fg">
+            {shown}
+          </p>
+        )}
+        {/* Builders should know who sees their course: Free courses go to Community, paid ones stay private. */}
+        {sharedNote && <p className="text-center text-[0.82rem] text-ink-soft">{sharedNote}</p>}
       </form>
       {caption && <span className="font-mono text-label tracking-[0.07em] text-ink-soft uppercase">{caption}</span>}
     </>

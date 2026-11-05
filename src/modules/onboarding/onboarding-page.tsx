@@ -33,7 +33,7 @@ const toolOf = (step: Step) =>
       : step.key === "plan" || step.key.startsWith("plan:") || step.key === "placement"
         ? (step.detail?.match(/Nemotron [\d.]+ \w+/)?.[0] ?? "Nemotron 3 Ultra")
         : step.key.startsWith("lesson:")
-          ? (step.detail?.match(/Nemotron [\d.]+ \w+/)?.[0] ?? "Nemotron 3 Super")
+          ? (step.detail?.match(/Nemotron [\d.]+ \w+/)?.[0] ?? "Nemotron 3.5 Super")
           : "CourseIt";
 
 /**
@@ -84,7 +84,7 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
   const userId = session?.user?.id;
   if (!userId) redirect("/login");
 
-  const course = await getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug, session?.user?.id);
   if (!course) notFound();
   const [steps, plan, chapters, test, result] = await Promise.all([
     getCourseSteps(course.id),
@@ -95,7 +95,6 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
   ]);
   after(() => touchEnrollment(userId, course.id));
 
-  console.log("course",course);
 
   const building = course.status !== "ready" && course.status !== "failed";
   const list = rows(steps, plan.lessons.length);

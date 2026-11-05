@@ -22,7 +22,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   if (!userId) redirect("/login");
   if (!/^[1-9]\d{0,3}$/.test(number)) notFound();
 
-  const course = await getCourseBySlug(slug);
+  const course = await getCourseBySlug(slug, session?.user?.id);
   if (!course) notFound();
   const id = course.id;
   const [lesson, plan] = await Promise.all([getLesson(id, Number(number)), getCoursePlan(userId, id)]);
@@ -92,7 +92,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
         }
         studyNotes={
           lesson.notes ? (
-            <LessonNotes markdown={lesson.notes} reading={lesson.reading} />
+            <LessonNotes markdown={lesson.notes} reading={lesson.reading} searched={Boolean(lesson.readingAt)} lessonId={userId ? lesson.id : undefined} />
           ) : (
             <p className="flex items-center gap-2.5 text-ink-soft">
               {writing && <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}

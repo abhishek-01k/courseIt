@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import CourseTile from "@/components/course-tile";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
+import { currentRegion } from "@/lib/region";
 import { getPopularCourses } from "@/modules/course/queries";
 import SectionHeading from "./section-heading";
 
 // Real courses from Community, most-taken first. Each opens the course page (visitors can look before signing in).
 async function Tiles() {
-  const popular = await getPopularCourses();
+  // Visitors outside India see English courses first (see getPopularCourses).
+  const popular = await getPopularCourses(6, await currentRegion());
   return (
     <RevealGroup className="mt-12 grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-5">
       {popular.map((course) => (

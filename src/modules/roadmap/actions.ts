@@ -177,9 +177,9 @@ export async function addCourseLinkAction(stageId: string, _prev: RoadmapFormSta
 export async function addCourseToStageAction(stageId: string, courseId: string) {
   const userId = await me();
   const stage = await ownedStage(userId, stageId);
-  const [course] = await db.select({ id: courses.id }).from(courses).where(eq(courses.id, courseId));
+  const [course] = await db.select({ id: courses.id, isPrivate: courses.isPrivate, createdBy: courses.createdBy }).from(courses).where(eq(courses.id, courseId));
   if (!stage) return NOT_YOURS;
-  if (!course) return { error: "That course no longer exists." };
+  if (!course || (course.isPrivate && course.createdBy !== userId)) return { error: "That course no longer exists." };
   await place(stage.roadmapId, stageId, course.id);
   refresh();
 }

@@ -34,7 +34,8 @@ async function summarize<T extends Summary>(list: T[], userId?: string) {
       .from(roadmapCourses)
       .innerJoin(courses, eq(courses.id, roadmapCourses.courseId))
       .innerJoin(roadmapStages, eq(roadmapStages.id, roadmapCourses.stageId))
-      .where(inArray(roadmapCourses.roadmapId, ids))
+      // Someone's private course shows only to them, even inside a roadmap that's shared.
+      .where(and(inArray(roadmapCourses.roadmapId, ids), userId ? or(eq(courses.isPrivate, false), eq(courses.createdBy, userId)) : eq(courses.isPrivate, false)))
       .orderBy(asc(roadmapStages.position), asc(roadmapCourses.position)), // roadmap order, for the cover
     db.select({ roadmapId: roadmapFollows.roadmapId, n: count() }).from(roadmapFollows).where(inArray(roadmapFollows.roadmapId, ids)).groupBy(roadmapFollows.roadmapId),
   ]);
@@ -113,7 +114,12 @@ export async function getRoadmap(slug: string, viewerId: string | null) {
       .select({ stageId: roadmapCourses.stageId, id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, durationSeconds: courses.durationSeconds, status: courses.status })
       .from(roadmapCourses)
       .innerJoin(courses, eq(courses.id, roadmapCourses.courseId))
-      .where(eq(roadmapCourses.roadmapId, roadmap.id))
+      .where(
+        and(
+          eq(roadmapCourses.roadmapId, roadmap.id),
+          viewerId ? or(eq(courses.isPrivate, false), eq(courses.createdBy, viewerId)) : eq(courses.isPrivate, false),
+        ),
+      )
       .orderBy(asc(roadmapCourses.position)),
     db.select({ followerCount: count() }).from(roadmapFollows).where(eq(roadmapFollows.roadmapId, roadmap.id)),
     db

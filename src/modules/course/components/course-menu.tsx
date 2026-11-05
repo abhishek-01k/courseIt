@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { Check, ChevronDown, Loader2, LogIn, Map as MapIcon, MoreVertical, Plus, Share2, X } from "lucide-react";
+import { Check, ChevronDown, Globe, Loader2, LogIn, Map as MapIcon, MoreVertical, Plus, Share2, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { sharePage } from "@/components/share-button";
@@ -11,17 +11,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioG
 import { coursePath, loginPath } from "@/lib/paths";
 import { addCourseToStageAction } from "@/modules/roadmap/actions";
 import type { RoadmapChoice } from "@/modules/roadmap/queries";
-import { enrollAction } from "../actions";
+import { enrollAction, makeCoursePublicAction } from "../actions";
 
 const item = "min-h-11 gap-3 rounded-xl px-3 text-[0.95rem] text-ink focus:bg-lime-soft focus:text-pill-ink";
 const panel = "rounded-[18px] bg-surface p-1.5 shadow-[0_0_0_1px_var(--line),0_24px_48px_-20px_rgba(22,49,92,0.4)] ring-0";
 
-type Props = { slug: string; courseId: string; courseTitle: string; signedIn: boolean; enrolled: boolean; roadmaps: RoadmapChoice[] };
+type Props = { slug: string; courseId: string; courseTitle: string; signedIn: boolean; enrolled: boolean; roadmaps: RoadmapChoice[]; isPrivate?: boolean };
 
 // Storyboard 10b: ⋮ on a course page. Enroll (if you aren't), Add to a roadmap (a dialog of yours), Share.
 // Signed out (a shared link), the first two ask you to sign in and bring you back here.
-export default function CourseMenu({ slug, courseId, courseTitle, signedIn, enrolled, roadmaps }: Props) {
+export default function CourseMenu({ slug, courseId, courseTitle, signedIn, enrolled, roadmaps, isPrivate = false }: Props) {
   const [open, setOpen] = useState(false);
+  const [sharing, setSharing] = useState(false); // the "make public" confirmation
   const [busy, start] = useTransition();
   const [note, setNote] = useState("");
   const here = coursePath(slug);
@@ -79,12 +80,53 @@ export default function CourseMenu({ slug, courseId, courseTitle, signedIn, enro
               Sign in to add to a roadmap
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem className={item} onClick={share}>
-            <Share2 className="size-[18px]" />
-            Share course
-          </DropdownMenuItem>
+          {/* A private course only opens for its builder (the only one who sees this menu), so its link can't be shared. */}
+          {isPrivate ? (
+            <DropdownMenuItem className={item} onClick={() => setSharing(true)}>
+              <Globe className="size-[18px]" />
+              Make public…
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem className={item} onClick={share}>
+              <Share2 className="size-[18px]" />
+              Share course
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {isPrivate && (
+        <Dialog.Root open={sharing} onOpenChange={setSharing}>
+          <Dialog.Portal>
+            <Dialog.Backdrop className="fixed inset-0 z-50 bg-[#0f1611]/40 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
+            <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex w-[min(460px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-card bg-surface p-[22px] text-ink shadow-[0_0_0_1px_var(--line),0_40px_80px_-30px_rgba(22,49,92,0.5)] outline-none transition-[opacity,scale] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none">
+              <Dialog.Title className="text-h3 font-medium">Make this course public?</Dialog.Title>
+              <Dialog.Description className="text-[0.95rem] text-ink-soft">
+                Anyone will be able to find it in Community and learn from it for free. This can&apos;t be undone: a public course can&apos;t be made private again.
+              </Dialog.Description>
+              <div className="flex flex-wrap justify-end gap-2.5">
+                <Dialog.Close render={<Button type="button" size="lg" variant="outline" />}>Keep private</Dialog.Close>
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={busy}
+                  onClick={() =>
+                    start(async () => {
+                      const result = await act(() => makeCoursePublicAction(courseId), "Couldn't make this course public.");
+                      if (result === null || result?.error) return; // act() already showed why
+                      setSharing(false);
+                      setNote("It's public now");
+                      setTimeout(() => setNote(""), 3000);
+                    })
+                  }
+                >
+                  Make public
+                </Button>
+              </div>
+            </Dialog.Popup>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
 
       {signedIn && (
         <Dialog.Root open={open} onOpenChange={setOpen}>

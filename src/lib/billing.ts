@@ -1,11 +1,11 @@
-import { and, count, eq, gte, type SQL, sql, sum } from "drizzle-orm";
+import { and, count, eq, gte, min, ne, or, type SQL, sql, sum } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
-import { courses, users } from "@/db/schema";
+import { courses, lessons, users } from "@/db/schema";
 import { isAdmin } from "@/lib/admin";
 import { getSubscription } from "@/lib/dodo";
 import { queueEmail } from "@/inngest/send-email";
-import { PLANS, type Plan, planForProduct } from "@/lib/plans";
+import { freePlan, HOURS_COUNT_FROM, PLANS, paymentsLive, type Plan, planForProduct } from "@/lib/plans";
 
 // Paid access while the subscription is active or retrying a payment; after a cancel, until the paid
 // period ends. on_hold, failed, expired, paused: back to Free.
@@ -20,21 +20,29 @@ function hasPaidAccess(u: Billing) {
 const MONTH_MS = 30 * 24 * 3600 * 1000;
 
 /**
- * Whether learners can pay. Off until Dodo approves the business and DODO_PAYMENTS_ENVIRONMENT=live_mode is set:
- * paid plans show "Coming soon", checkout is closed, and build limits stay off (nobody hits a limit they can't pay
- * to lift). Set DODO_ALLOW_TEST_CHECKOUT=1 locally to try test-mode checkout; never in production, where it would
- * let anyone get a paid plan with a test card.
+ * The start of the current monthly cycle for someone who signed up on `anchor`: the latest date on or before `now` that
+ * falls on the sign-up day of the month (the 31st becomes the last day of shorter months). Also returns the next one.
  */
-export const paymentsLive = () =>
-  process.env.DODO_PAYMENTS_ENVIRONMENT === "live_mode" || (process.env.NODE_ENV !== "production" && process.env.DODO_ALLOW_TEST_CHECKOUT === "1");
+export function monthlyCycle(anchor: Date, now = new Date()) {
+  const on = (year: number, month: number) => {
+    const last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    return new Date(Date.UTC(year, month, Math.min(anchor.getUTCDate(), last), anchor.getUTCHours(), anchor.getUTCMinutes()));
+  };
+  let start = on(now.getUTCFullYear(), now.getUTCMonth());
+  if (start > now) start = on(now.getUTCFullYear(), now.getUTCMonth() - 1);
+  return { start, next: on(start.getUTCFullYear(), start.getUTCMonth() + 1) };
+}
+
+export { paymentsLive } from "@/lib/plans";
 
 export type Usage = {
   plan: Plan;
-  used: number; // new courses built in the last 30 days (on Free: ever)
-  left: number;
-  hoursUsed: number; // video hours of those courses
+  hoursUsed: number; // video hours built this cycle (Free: since the sign-up day this month; paid: the last 30 days)
   hoursLeft: number;
-  unlimited: boolean; // no build limits: admins, or anyone while payments aren't live yet
+  hoursBackAt: Date | null; // when hours come back: Free's next renewal, or when the oldest paid build turns 30 days
+  coursesUsed: number; // new courses counted this cycle (same rules as the hours)
+  coursesLeft: number; // Infinity unless the plan caps courses (the launch offer: 1 a month)
+  unlimited: boolean; // no build limits: admins only
   admin: boolean;
   renewsAt: Date | null;
   cancelsAtRenewal: boolean;
@@ -42,8 +50,12 @@ export type Usage = {
   canManage: boolean; // has a Dodo customer, so the billing portal opens
 };
 
-// cache: the sidebar, the build form and the page often ask in the same request; one lookup serves them all.
-export const usageFor = cache(async (userId: string): Promise<Usage> => {
+/**
+ * The learner's plan and hours, read fresh. Most callers want usageFor (cached per request).
+ * `upTo`: count only courses started no later than this course (itself included). Used by the re-check after saving a
+ * course, so when two builds start at once only the later one goes over and is backed out, never both.
+ */
+export async function readUsage(userId: string, upTo?: string): Promise<Usage> {
   const [u] = await db
     .select({
       email: users.email,
@@ -52,24 +64,43 @@ export const usageFor = cache(async (userId: string): Promise<Usage> => {
       planRenewsAt: users.planRenewsAt,
       planCancelsAtRenewal: users.planCancelsAtRenewal,
       dodoCustomerId: users.dodoCustomerId,
+      createdAt: users.createdAt,
     })
     .from(users)
     .where(eq(users.id, userId));
-  const plan = u && hasPaidAccess(u) ? PLANS[u.plan] : PLANS.free;
-  const [{ used, seconds }] = await db
-    .select({ used: count(), seconds: sum(courses.durationSeconds).mapWith(Number) })
+  // Free, or the launch offer while payments aren't live yet (src/lib/plans.ts).
+  const plan = u && hasPaidAccess(u) ? PLANS[u.plan] : freePlan();
+  // Free: hours renew each month on the sign-up day, and unused ones don't carry over. Paid: a rolling 30 days, so
+  // each build's hours come back 30 days after it. Hours used on Free still count after an upgrade, and the other way.
+  const cycle = plan.id === "free" ? monthlyCycle(u?.createdAt ?? new Date()) : null;
+  const cycleStart = cycle?.start ?? new Date(Date.now() - MONTH_MS);
+  // Builds from before the hours-based plans launched don't count (see HOURS_COUNT_FROM).
+  const since = cycleStart > HOURS_COUNT_FROM ? cycleStart : HOURS_COUNT_FROM;
+  // A failed build counts only the lessons it finished (often none), so a build that breaks doesn't eat the
+  // learner's hours. Everything else (queued, building, ready) counts in full from the moment it starts.
+  const builtSeconds = sql<number>`case when ${courses.status} <> 'failed' then ${courses.durationSeconds}
+    else coalesce((select sum(${lessons.endSeconds} - ${lessons.startSeconds}) from ${lessons} where ${lessons.courseId} = ${courses.id} and ${lessons.ready}), 0) end`;
+  const [{ seconds, oldest, built }] = await db
+    .select({ seconds: sum(builtSeconds).mapWith(Number), oldest: min(courses.createdAt), built: count() })
     .from(courses)
-    // Free's one course is once per account, so anyone who has built a course (even one that failed, or
-    // back when they were paying) needs Pro or Max to build another. Paid plans count a rolling 30 days.
-    .where(and(eq(courses.createdBy, userId), plan.lifetime ? undefined : gte(courses.createdAt, new Date(Date.now() - MONTH_MS))));
+    .where(
+      and(
+        eq(courses.createdBy, userId),
+        gte(courses.createdAt, since),
+        or(ne(courses.status, "failed"), sql`exists (select 1 from ${lessons} where ${lessons.courseId} = ${courses.id} and ${lessons.ready})`),
+        upTo ? sql`(${courses.createdAt}, ${courses.id}) <= (select c.created_at, c.id from course c where c.id = ${upTo})` : undefined,
+      ),
+    );
+  const hours = (seconds ?? 0) / 3600;
   const admin = isAdmin(u?.email);
-  const unlimited = admin || !paymentsLive();
+  const unlimited = admin;
   return {
     plan,
-    used,
-    left: unlimited ? Infinity : Math.max(0, plan.coursesPerMonth - used),
-    hoursUsed: Math.round(((seconds ?? 0) / 3600) * 10) / 10,
-    hoursLeft: unlimited ? Infinity : Math.max(0, plan.hoursPerMonth - (seconds ?? 0) / 3600),
+    hoursUsed: Math.round(hours * 10) / 10,
+    hoursLeft: unlimited ? Infinity : Math.max(0, plan.hoursPerMonth - hours),
+    hoursBackAt: cycle ? cycle.next : oldest ? new Date(new Date(oldest).getTime() + MONTH_MS) : null,
+    coursesUsed: built,
+    coursesLeft: unlimited || !plan.coursesPerMonth ? Infinity : Math.max(0, plan.coursesPerMonth - built),
     unlimited,
     admin,
     renewsAt: plan.id === "free" ? null : (u?.planRenewsAt ?? null),
@@ -77,7 +108,13 @@ export const usageFor = cache(async (userId: string): Promise<Usage> => {
     status: u?.planStatus ?? null,
     canManage: !!u?.dodoCustomerId,
   };
-});
+}
+
+// cache: the sidebar, the build form and the page often ask in the same request; one lookup serves them all.
+export const usageFor = cache(readUsage);
+
+/** "12 Dec": when hours come back, for messages. */
+export const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 /**
  * Why this learner can't build a new course right now, or null when they can. Used to lock the build form
@@ -86,23 +123,31 @@ export const usageFor = cache(async (userId: string): Promise<Usage> => {
 export function buildBlock(u: Usage): { title: string; detail: string; upgrade: boolean } | null {
   if (u.unlimited) return null;
   const { plan } = u;
-  if (u.left <= 0) {
-    return plan.lifetime
-      ? { title: "You've used your free course", detail: "Upgrade to build your own courses, or join one someone already built.", upgrade: true }
-      : {
-          title: `You've built all ${plan.coursesPerMonth} courses for this month`,
-          detail: `A slot frees up 30 days after each build.${plan.id === "pro" ? " Max gives you 20 a month." : ""}`,
-          upgrade: plan.id !== "max",
-        };
-  }
-  if (u.hoursLeft < 0.1) {
+  const back = u.hoursBackAt ? shortDate(u.hoursBackAt) : null;
+  // Launch offer: one course a month, whatever its length.
+  if (u.coursesLeft <= 0) {
     return {
-      title: `You've used all ${plan.hoursPerMonth} hours of video ${plan.lifetime ? "on Free" : "for this month"}`,
-      detail: `Hours free up 30 days after each build.${plan.id === "pro" ? " Max gives you 100 hours a month." : ""}`,
-      upgrade: plan.id !== "max",
+      title: "You've built your free course for this month",
+      detail: [back && `You can build another on ${back}.`, "Courses others built are always free to join.", "Pro and Max are coming soon."].filter(Boolean).join(" "),
+      upgrade: false,
     };
   }
-  return null;
+  if (u.hoursLeft >= 1 / 60) return null;
+  // Nobody can upgrade until payments are live, so no upgrade is offered then.
+  const next = !paymentsLive() ? null : plan.id === "free" ? PLANS.pro : plan.id === "pro" ? PLANS.max : null;
+  return {
+    title: plan.launch
+      ? `You've used your ${plan.hoursPerMonth} launch hours this month`
+      : `You've used all ${plan.hoursPerMonth} hours ${plan.id === "free" ? "of Free" : `of ${plan.name}`} this month`,
+    detail: [
+      back && (plan.id === "free" ? `Your free hours renew on ${back}.` : `Hours start coming back on ${back}.`),
+      next && `${next.name} gives you ${next.hoursPerMonth} hours a month.`,
+      plan.launch && "Pro and Max are coming soon.",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    upgrade: !!next,
+  };
 }
 
 /** On Pro or Max (admins count too). Paid perks: retrying failed builds, chat support. */
@@ -170,7 +215,7 @@ export async function syncSubscription(subscriptionId: string, signedInUserId?: 
   const id = sub.subscription_id;
   const was = user.dodoSubscriptionId === id ? user : null; // what we knew about this subscription before
   if (sub.status === "active" && (was?.planStatus !== "active" || was.plan !== plan)) {
-    await queueEmail("planStarted", user.id, `plan-started:${id}:${plan}`, { plan: name, courses: PLANS[plan].coursesPerMonth, hours: PLANS[plan].hoursPerMonth });
+    await queueEmail("planStarted", user.id, `plan-started:${id}:${plan}`, { plan: name, hours: PLANS[plan].hoursPerMonth, maxHours: PLANS[plan].maxHours });
   }
   if ((sub.status === "on_hold" || sub.status === "past_due") && was?.planStatus !== sub.status) {
     await queueEmail("paymentFailed", user.id, `payment-failed:${id}:${sub.next_billing_date.slice(0, 10)}`, { plan: name });

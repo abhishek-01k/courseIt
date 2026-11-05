@@ -1,10 +1,11 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { db } from "@/db";
-import { attempts, lessonProgress, lessons, lessonWatch, notes, questions, users } from "@/db/schema";
+import { attempts, courses, lessonProgress, lessons, lessonWatch, notes, questions, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { findReading } from "@/lib/tavily";
 
 const validZone = (zone: string) => {
   try {
@@ -102,4 +103,35 @@ export async function markLessonDoneAction(lessonId: string) {
     .insert(lessonWatch)
     .values({ userId, lessonId, courseId: lesson.courseId, watchedAt: new Date() })
     .onConflictDoUpdate({ target: [lessonWatch.userId, lessonWatch.lessonId], set: { watchedAt: sql`coalesce(${lessonWatch.watchedAt}, now())`, updatedAt: new Date() } });
+}
+
+/**
+ * "Find further reading" on a lesson: one Tavily search, saved on the lesson so every learner sees it after that.
+ * The lesson is claimed first (reading_at set only if empty), so double taps or two learners at once cost one credit.
+ * If Tavily can't be reached, the claim is released so it can be tried again; if it finds nothing, that's final.
+ */
+export async function findReadingAction(lessonId: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { error: "Sign in to find further reading." };
+
+  const [row] = await db
+    .select({ title: lessons.title, course: courses.title, isPrivate: courses.isPrivate, createdBy: courses.createdBy })
+    .from(lessons)
+    .innerJoin(courses, eq(courses.id, lessons.courseId))
+    .where(eq(lessons.id, lessonId));
+  if (!row || (row.isPrivate && row.createdBy !== userId)) return { error: "This lesson isn't available." };
+
+  const claimed = await db.update(lessons).set({ readingAt: new Date() }).where(and(eq(lessons.id, lessonId), isNull(lessons.readingAt))).returning({ id: lessons.id });
+  if (!claimed.length) {
+    refresh(); // someone already searched: show what they found
+    return;
+  }
+  const reading = await findReading(`${row.title} (${row.course})`);
+  if (reading === null) {
+    await db.update(lessons).set({ readingAt: null }).where(eq(lessons.id, lessonId));
+    return { error: "Couldn't search the web right now. Try again in a moment." };
+  }
+  await db.update(lessons).set({ reading }).where(eq(lessons.id, lessonId));
+  refresh();
 }

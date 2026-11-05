@@ -34,13 +34,21 @@ export type DodoSubscription = {
   cancel_at_next_billing_date: boolean;
 };
 
+// India and UK products are priced for buyers there (GST or VAT included). Their checkout is locked to that billing
+// country and currency: otherwise anyone shown India prices (say through a VPN) could pick a US address and pay ₹499
+// converted to dollars, without GST (seen in Nov 2026 tests: $5.29 instead of $19), and the subscription would then
+// renew in that other currency. Everyone else pays the US product in dollars, from any country.
+const LOCKED: Record<string, { country: string; currency: string }> = { in: { country: "IN", currency: "INR" }, gb: { country: "GB", currency: "GBP" } };
+
 export function createCheckout(input: {
   productId: string;
+  region: "in" | "gb" | "us"; // the region of productId (not just of the visitor)
   customer: { customer_id: string } | { email: string; name?: string };
   returnUrl: string;
   cancelUrl: string;
   userId: string;
 }) {
+  const locked = LOCKED[input.region];
   return dodo<{ session_id: string; checkout_url: string | null }>("/checkouts", {
     method: "POST",
     body: {
@@ -49,6 +57,8 @@ export function createCheckout(input: {
       return_url: input.returnUrl,
       cancel_url: input.cancelUrl,
       metadata: { user_id: input.userId },
+      ...(locked && { billing_address: { country: locked.country }, billing_currency: locked.currency }),
+      feature_flags: { allow_currency_selection: false, ...(locked && { allow_customer_editing_country: false }) },
     },
   });
 }
@@ -85,6 +95,16 @@ export async function getInvoicePdf(paymentId: string) {
 }
 
 export const getSubscription = (id: string) => dodo<DodoSubscription>(`/subscriptions/${encodeURIComponent(id)}`);
+
+/**
+ * Moves a subscription to another product now (Pro → Max). Dodo charges the saved card the prorated difference for the
+ * rest of the current period; if that payment fails, nothing changes (the learner stays on their plan).
+ */
+export const changePlan = (subscriptionId: string, productId: string) =>
+  dodo<unknown>(`/subscriptions/${encodeURIComponent(subscriptionId)}/change-plan`, {
+    method: "POST",
+    body: { product_id: productId, quantity: 1, proration_billing_mode: "prorated_immediately", effective_at: "immediately", on_payment_failure: "prevent_change" },
+  });
 
 export const createPortalLink = (customerId: string, returnUrl: string) =>
   dodo<{ link: string }>(`/customers/${encodeURIComponent(customerId)}/customer-portal/session?return_url=${encodeURIComponent(returnUrl)}`, { method: "POST" });

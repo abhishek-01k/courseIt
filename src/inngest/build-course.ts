@@ -2,14 +2,13 @@ import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { courses, courseSteps, courseVideos, lessons, placementQuestions, questions, videos, videoSegments } from "@/db/schema";
-import { readVideoSegment } from "@/lib/ai";
 import { canRetry, usageFor } from "@/lib/billing";
-import { buildsPaused, PAUSED_BUILD_ERROR } from "@/lib/builds-paused";
+import { buildsPaused, NO_CAPTIONS_ERROR, noCaptions, PAUSED_BUILD_ERROR } from "@/lib/builds-paused";
 import { AI } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils";
 import { planLessons, writeLesson, writePlacementTest } from "@/lib/course-writer";
-import { findReading } from "@/lib/tavily";
 import { fetchTranscript } from "@/lib/transcript";
+import { NonRetriableError } from "inngest";
 import { BUILD_COURSE, inngest } from "./client";
 import { queueEmail } from "./send-email";
 
@@ -32,9 +31,6 @@ async function loadVideos(courseId: string) {
  */
 async function track<T>(courseId: string, key: string, label: string, work: () => Promise<T>, result?: (value: T) => string | null) {
   const row = { courseId, key, label, detail: null, status: "running" as const, startedAt: new Date(), finishedAt: null };
-  
-  console.log("[track] courseId:", courseId);
-  console.log("[track] row:", row);
 
   await db.insert(courseSteps).values(row).onConflictDoUpdate({ target: [courseSteps.courseId, courseSteps.key], set: row });
   const where = and(eq(courseSteps.courseId, courseId), eq(courseSteps.key, key));
@@ -49,6 +45,29 @@ async function track<T>(courseId: string, key: string, label: string, work: () =
 }
 
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length.toLocaleString("en-US");
+
+/**
+ * Only the transcript lines inside one lesson's window, filtered in the database. A lesson used to download its
+ * whole video's transcript and keep a few minutes of it (lesson after lesson, retry after retry), which was most of
+ * the Neon network transfer. Same rule as writeLesson in course-writer.ts: lines whose "[HH:MM:SS]" falls within the
+ * window. Returns null below 3 lines, where writeLesson would use the whole transcript, so the caller fetches it.
+ * The patterns avoid backslashes: "[[]" and "[]]" are a literal "[" and "]", chr(10) is a newline.
+ */
+async function sliceFor(videoId: string, from: number, to: number) {
+  const { rows } = await db.execute(sql`
+    select string_agg(x.line, chr(10) order by x.seg, x.n) as notes, count(*)::int as lines
+    from (
+      select s.start_seconds as seg, t.n, t.line,
+        substring(btrim(t.line) from '^[[]([0-9]{1,2}):[0-9]{2}:[0-9]{2}[]]')::int * 3600
+          + substring(btrim(t.line) from '^[[][0-9]{1,2}:([0-9]{2}):[0-9]{2}[]]')::int * 60
+          + substring(btrim(t.line) from '^[[][0-9]{1,2}:[0-9]{2}:([0-9]{2})[]]')::int as secs
+      from ${videoSegments} s, regexp_split_to_table(s.notes, chr(10)) with ordinality as t(line, n)
+      where s.video_id = ${videoId}
+    ) x
+    where x.secs between ${from} and ${to}`);
+  const [row] = rows as { notes: string | null; lines: number }[];
+  return row && row.lines >= 3 ? row.notes : null;
+}
 
 async function notesFor(videoId: string) {
   const parts = await db.select({ notes: videoSegments.notes }).from(videoSegments).where(eq(videoSegments.videoId, videoId)).orderBy(asc(videoSegments.startSeconds));
@@ -73,21 +92,24 @@ export const buildCourse = inngest.createFunction(
       await setCourse(courseId, { status: "failed", error: error.message.slice(0, 500) });
       // Tell whoever started it (once per course): Retry on Pro and Max, an upgrade link on Free.
       const [course] = await db.select({ title: courses.title, slug: courses.slug, createdBy: courses.createdBy }).from(courses).where(eq(courses.id, courseId));
-      if (course?.createdBy) {
+      // No captions: the course page says so, and an email offering Retry would be wrong.
+      if (course?.createdBy && !noCaptions(error.message)) {
         const retry = canRetry(await usageFor(course.createdBy));
         await queueEmail("buildStopped", course.createdBy, `build-stopped:${courseId}`, { title: course.title, slug: course.slug, canRetry: retry });
       }
     },
   },
   async ({ event, step }) => {
-    
-    console.log("[buildCourse] Full event:", JSON.stringify(event, null, 2));
-    console.log("[buildCourse] Event data:", event.data);
 
     // resume: keep the plan and the lessons already written; only write what's missing.
-    const { courseId, resume = false } = event.data as { courseId: string; resume?: boolean };
-
-    console.log("[buildCourse] Extracted courseId:", courseId);
+    const { courseId, resume = false, plan } = event.data as { courseId: string; resume?: boolean; plan?: string };
+    // Who writes the lessons. Pro and Max (and admins, sent as "max"): Nemotron 3 Ultra, the most reliable in benchmarks
+    // (8/8 real lessons, avg 6s, $0.0063 each, 5 Nov 2026), with Lightning then Super as backups (Super last while it's slow). Free: Lightning, fast
+    // and cheap (7/8, avg 7s, $0.0004 each, ~400 words), with Ultra for the odd lesson Lightning can't write. Free used
+    // to get Super, but Nebius served Nemotron 3.5 Super at 5–8 tokens/s on 5 Nov (others: 140–230), so Free lessons
+    // took minutes and most failed. Measured with src/lib/lesson-speed.check.ts.
+    const paid = plan === "pro" || plan === "max";
+    const writer = paid ? ({ model: "ultra", fallbacks: ["lightning", "super"] } as const) : ({ model: "lightning", fallbacks: ["ultra"] } as const);
 
     if (typeof courseId !== "string" || !courseId.trim()) {
       throw new Error(
@@ -102,71 +124,38 @@ export const buildCourse = inngest.createFunction(
       return;
     }
 
-    // Captions first: one Supadata call per video, all at once, seconds at any length. Videos with no
-    // captions are split into pieces for Gemini to watch. Anything already read for another course is reused.
-    const pieces = await step.run("fetch transcripts", async () => {
+    // Courses are built from captions only (one Supadata call per video, seconds at any length). New courses are
+    // checked for captions before they start (src/modules/course/start.ts), so this mostly reuses saved transcripts.
+    // A video with no captions is skipped; with none at all, the build stops instead of writing empty lessons.
+    const readable = await step.run("fetch transcripts", async () => {
       if (!resume) await db.delete(courseSteps).where(eq(courseSteps.courseId, courseId));
       await setCourse(courseId, { status: "reading", progress: 10, error: null });
       const list = await loadVideos(courseId);
-      // Only a full transcript counts as done; a video Gemini read part of still tries captions first.
-      const done = new Set(
-        (
-          await db
-            .select({ id: videoSegments.videoId })
-            .from(videoSegments)
-            .where(and(inArray(videoSegments.videoId, list.map((v) => v.id)), eq(videoSegments.model, "supadata")))
-        ).map((r) => r.id),
+      // Any saved notes count, including ones the old Gemini reader wrote for courses built before captions-only.
+      const saved = new Set(
+        (await db.select({ id: videoSegments.videoId }).from(videoSegments).where(inArray(videoSegments.videoId, list.map((v) => v.id)))).map((r) => r.id),
       );
-      const missing = await Promise.all(
+      const found = await Promise.all(
         list.map((v) =>
-          done.has(v.id)
-            ? track(courseId, `transcript:${v.id}`, `Using the saved transcript of “${v.title}”`, async () => null, () => "Read before for another course")
+          saved.has(v.id)
+            ? track(courseId, `transcript:${v.id}`, `Using the saved transcript of “${v.title}”`, async () => "saved", () => "Read before for another course")
             : track(
                 courseId,
                 `transcript:${v.id}`,
                 `Fetching the transcript of “${v.title}”`,
                 async () => {
                   const transcript = await fetchTranscript(v.id);
-                  if (!transcript) return { video: v, transcript: null };
-                  await db.batch([
-                    db.delete(videoSegments).where(eq(videoSegments.videoId, v.id)), // drop partial Gemini notes
-                    db.insert(videoSegments).values({ videoId: v.id, startSeconds: 0, endSeconds: v.durationSeconds, notes: transcript, model: "supadata" }),
-                  ]);
-                  return { video: v, transcript };
+                  if (!transcript) return null;
+                  await db.insert(videoSegments).values({ videoId: v.id, startSeconds: 0, endSeconds: v.durationSeconds, notes: transcript, model: "supadata" }).onConflictDoNothing();
+                  return words(transcript);
                 },
-                (r) => (r.transcript ? `${words(r.transcript)} words · ${formatDuration(v.durationSeconds)} of video` : "No captions, so Gemini will watch it"),
-              ).then((r) => (r.transcript ? null : r.video)),
+                (w) => (w ? `${w} words · ${formatDuration(v.durationSeconds)} of video` : "No captions, so this video is skipped"),
+              ),
         ),
       );
-      return missing
-        .filter((v) => v !== null)
-        .flatMap((v) => {
-          const out = [];
-          for (let start = 0; start < v.durationSeconds; start += AI.segmentSeconds) {
-            out.push({ video: { id: v.id, title: v.title }, start, end: Math.min(start + AI.segmentSeconds, v.durationSeconds) });
-          }
-          return out;
-        });
+      return found.filter(Boolean).length;
     });
-
-    // Fallback: Gemini watches every captionless piece in parallel.
-    await Promise.all(
-      pieces.map(({ video, start, end }) =>
-        step.run(`read ${video.id} ${start}-${end}`, () =>
-          track(courseId, `watch:${video.id}:${start}`, `Watching ${formatDuration(start)}–${formatDuration(end)} of “${video.title}” with Gemini`, async () => {
-            const key = and(eq(videoSegments.videoId, video.id), eq(videoSegments.startSeconds, start), eq(videoSegments.endSeconds, end));
-            const [cached] = await db.select({ videoId: videoSegments.videoId }).from(videoSegments).where(key);
-            if (!cached) {
-              const notes = await readVideoSegment(video, start, end);
-              await db.insert(videoSegments).values({ videoId: video.id, startSeconds: start, endSeconds: end, notes, model: AI.readerModel }).onConflictDoNothing();
-            }
-            await setCourse(courseId, {
-              progress: sql`10 + 40 * (select count(*) from ${videoSegments} where ${videoSegments.model} <> 'supadata' and ${videoSegments.videoId} in (select ${courseVideos.videoId} from ${courseVideos} where ${courseVideos.courseId} = ${courseId})) / ${pieces.length}`,
-            });
-          }),
-        ).catch(() => null), // a piece that never reads is skipped; the plan is built from what was read
-      ),
-    );
+    if (!readable) throw new NonRetriableError(NO_CAPTIONS_ERROR);
 
     // Existing lessons are never replaced: answers, watch time and notes of every learner hang off them.
     const kept = await step.run("existing lessons", async () => {
@@ -179,7 +168,11 @@ export const buildCourse = inngest.createFunction(
     if (!kept.length) {
       const [{ title }, list] = await step.run("course videos", async () => {
         const [course] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId));
-        return [course, await loadVideos(courseId)] as const;
+        const all = await loadVideos(courseId);
+        const withNotes = new Set(
+          (await db.select({ id: videoSegments.videoId }).from(videoSegments).where(inArray(videoSegments.videoId, all.map((v) => v.id)))).map((r) => r.id),
+        );
+        return [course, all.filter((v) => withNotes.has(v.id))] as const;
       });
       // Each video of a playlist is planned on its own, in parallel: small prompts, no single huge call
       // that can stop early or time out, and one slow video doesn't hold up the rest.
@@ -213,15 +206,18 @@ export const buildCourse = inngest.createFunction(
           `Writing lesson ${lesson.position + 1}: ${lesson.title}`,
           async () => {
             const [course] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId));
-            // Tavily looks for further reading while Nemotron writes, so it adds no time.
-            const [written, reading] = await Promise.all([
-              writeLesson(course.title, lesson, await notesFor(lesson.videoId)),
-              findReading(`${lesson.title} (${course.title})`),
-            ]);
+            // Further reading (Tavily) is no longer searched here: learners ask for it from the lesson page, so credits
+            // are spent only on lessons someone reads, and never twice when a step retries.
+            const written = await writeLesson(
+              course.title,
+              lesson,
+              (await sliceFor(lesson.videoId, lesson.startSeconds - 30, lesson.endSeconds + 30)) ?? (await notesFor(lesson.videoId)),
+              { model: writer.model, fallbacks: [...writer.fallbacks] },
+            );
             await db.batch([
               db.delete(questions).where(eq(questions.lessonId, lessonId)),
               db.insert(questions).values(written.questions.map((q, position) => ({ ...q, lessonId, position }))),
-              db.update(lessons).set({ notes: written.notes, reading, ready: true }).where(eq(lessons.id, lessonId)),
+              db.update(lessons).set({ notes: written.notes, ready: true }).where(eq(lessons.id, lessonId)),
               // 60–100% by share of ready lessons; counted in SQL so parallel steps can't overwrite each other.
               db
                 .update(courses)
@@ -230,9 +226,9 @@ export const buildCourse = inngest.createFunction(
                 })
                 .where(eq(courses.id, courseId)),
             ]);
-            return { ...written, links: reading.length };
+            return written;
           },
-          (w) => `${AI.modelNames[w.model]} · ${words(w.notes)} words of notes · ${w.questions.length} quiz questions${w.links ? ` · ${w.links} reading links via Tavily` : ""}`,
+          (w) => `${AI.modelNames[w.model]} · ${words(w.notes)} words of notes · ${w.questions.length} quiz questions`,
         );
       });
 

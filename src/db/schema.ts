@@ -1,5 +1,5 @@
-import { relations } from "drizzle-orm";
-import { boolean, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { Chapter } from "@/types/youtube";
 
@@ -25,6 +25,8 @@ export const users = pgTable("user", {
   // Announcements and product news by email (Settings → Notifications, or the unsubscribe link). The Inbox copy
   // always arrives; account emails (course ready, billing) aren't affected.
   emailNews: boolean("email_news").notNull().default(true),
+  // Sign-up date. Free's monthly hours renew on this day of the month (see usageFor in src/lib/billing.ts).
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
 export const accounts = pgTable(
@@ -77,7 +79,7 @@ export const courses = pgTable(
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     sourceType: sourceType("source_type").notNull(),
-    sourceId: text("source_id").notNull().unique(), // video or playlist id
+    sourceId: text("source_id").notNull(), // video or playlist id: one public course per video (indexes below)
     slug: text("slug").notNull().unique(), // the URL: /courses/<slug>
     title: text("title").notNull(),
     channel: text("channel").notNull(),
@@ -88,8 +90,15 @@ export const courses = pgTable(
     error: text("error"),
     createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    // A Pro or Max perk: only its builder sees it, and it isn't in Community. Can be made public later, never the
+    // other way. Someone else pasting the same video gets their own course (the saved transcript is shared).
+    isPrivate: boolean("is_private").notNull().default(false),
   },
-  (t) => [index("course_created_by_idx").on(t.createdBy, t.createdAt)], // daily limit check
+  (t) => [
+    index("course_created_by_idx").on(t.createdBy, t.createdAt), // hours used
+    uniqueIndex("course_public_source_idx").on(t.sourceId).where(sql`not ${t.isPrivate}`),
+    uniqueIndex("course_private_source_idx").on(t.sourceId, t.createdBy).where(sql`${t.isPrivate}`),
+  ],
 );
 
 export const courseVideos = pgTable(
@@ -102,7 +111,7 @@ export const courseVideos = pgTable(
   (t) => [primaryKey({ columns: [t.courseId, t.videoId] })],
 );
 
-// What Gemini saw in one stretch of a video: timestamped study notes. Shared by every course that
+// A video's study text: its full caption transcript (model "supadata"), or older Gemini notes for one stretch. Shared by every course that
 // includes the video, so a video is only ever read once.
 export const videoSegments = pgTable(
   "video_segment",
@@ -129,7 +138,9 @@ export const lessons = pgTable(
     endSeconds: integer("end_seconds").notNull(),
     summary: text("summary").notNull(),
     notes: text("notes"), // markdown study notes; null until this lesson is built
-    reading: jsonb("reading").$type<{ title: string; url: string }[]>().notNull().default([]), // "Further reading", found by Tavily
+    reading: jsonb("reading").$type<{ title: string; url: string }[]>().notNull().default([]),
+    // When "Further reading" was searched for (on demand, by a learner tapping the button). Null: not searched yet.
+    readingAt: timestamp("reading_at", { mode: "date" }), // "Further reading", found by Tavily
     ready: boolean("ready").notNull().default(false),
   },
   (t) => [index("lesson_course_idx").on(t.courseId, t.position)],

@@ -209,24 +209,21 @@ export const COURSE_LIMITS = {
   maxTotalSeconds: 20 * 3600, // hard ceiling on every plan (plans set their own caps in src/lib/plans.ts); playlists are planned video by video, so long ones stay reliable
 };
 
-// AI models. Captions come from Supadata; Gemini only watches videos that have none. Every decision and
+// AI models. Courses are built from the video's own captions (Supadata); videos without captions aren't built. Every decision and
 // every word a learner reads comes from NVIDIA Nemotron on Nebius Token Factory.
 export const AI = {
-  readerModel: "gemini-3.8-flash",
+  // Nebius removed nemotron-3-super-120b-a12b and NVIDIA-Nemotron-3-Nano-30B-A3B on 9 Nov 2026; 3.5 Super is the
+  // same price and accepts the same requests.
   nemotron: {
     ultra: "nvidia/Nemotron-3-Ultra-550b-a55b", // serious reasoning: planning a course out of hours of video
-    super: "nvidia/nemotron-3-super-120b-a12b", // lesson notes and quizzes, many in parallel
-    nano: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", // instant calls: feedback on a wrong answer, hints, tags
+    super: "nvidia/Nemotron-3.5-Super-VL", // lesson notes and quizzes, many in parallel
     lightning: "nvidia/Nemotron-3_5-Lightning", // backup when another model is overloaded
   },
   // If a model stays overloaded, the same request moves down its list.
   fallbacks: {
     ultra: ["super", "lightning"],
-    super: ["lightning", "nano"],
-    nano: ["lightning"],
-    lightning: ["nano"],
-  } as Record<string, ("ultra" | "super" | "nano" | "lightning")[]>,
-  modelNames: { ultra: "Nemotron 3 Ultra", super: "Nemotron 3 Super", nano: "Nemotron 3 Nano", lightning: "Nemotron 3.5 Lightning" },
-  segmentSeconds: 10 * 60, // Gemini reads ~5 min of video per minute, so read 10-minute pieces in parallel
-  readerFps: 0.25, // one frame every 4s: lectures change slowly, and audio carries most of it
+    super: ["lightning"],
+    lightning: ["super"],
+  } as Record<string, ("ultra" | "super" | "lightning")[]>,
+  modelNames: { ultra: "Nemotron 3 Ultra", super: "Nemotron 3.5 Super", lightning: "Nemotron 3.5 Lightning" },
 };

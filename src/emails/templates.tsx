@@ -1,4 +1,4 @@
-import { PLANS } from "@/lib/plans";
+import { freePlan } from "@/lib/plans";
 import { appUrl, EmailLayout, P, Strong } from "./layout";
 
 // Every message CourseIt sends. Each takes the details it needs and returns the email (subject and body) and
@@ -10,10 +10,13 @@ const hi = (name?: string | null) => (name ? `Hi ${name.split(" ")[0]},` : "Hi,"
 
 type Email = { subject: string; body: React.ReactElement; note: { title: string; text: string; href: string } };
 
+// What a new learner gets for free right now: one course a month during the launch offer, otherwise hours.
+const freeAllowance = () => (freePlan().coursesPerMonth ? "You get one free course every month" : `You get ${freePlan().hoursPerMonth} hours of video free every month`);
+
 export const TEMPLATES = {
   welcome: ({ name }: { name?: string | null }): Email => ({
     subject: "Welcome to CourseIt",
-    note: { title: "Welcome to CourseIt", text: `Your first course is free, up to ${PLANS.free.maxHours} hours long. Paste any long YouTube video to start.`, href: "/new" },
+    note: { title: "Welcome to CourseIt", text: `${freeAllowance()}. Paste any long YouTube video to start.`, href: "/new" },
     body: (
       <EmailLayout preview="Turn any long YouTube video into a course with lessons, quizzes and a daily plan." heading="Welcome to CourseIt" cta={{ label: "Build your first course", href: appUrl("/new") }}>
         <P>{hi(name)}</P>
@@ -21,8 +24,8 @@ export const TEMPLATES = {
           Paste any long YouTube video or playlist and CourseIt turns it into a course: short lessons, notes, quizzes and a plan that fits your day.
         </P>
         <P>
-          <Strong>Your first course is free</Strong>, up to {PLANS.free.maxHours} hours long. Courses other learners already built are always free to join, so check
-          Community too.
+          <Strong>{freeAllowance()}</Strong>, up to {freePlan().maxHours} hours long. Courses other
+          learners already built are always free to join and never use your hours, so check Community too.
         </P>
       </EmailLayout>
     ),
@@ -69,15 +72,15 @@ export const TEMPLATES = {
     ),
   }),
 
-  planStarted: ({ name, plan, courses, hours }: { name?: string | null; plan: string; courses: number; hours: number }): Email => ({
+  planStarted: ({ name, plan, hours, maxHours }: { name?: string | null; plan: string; hours: number; maxHours: number }): Email => ({
     subject: `Welcome to CourseIt ${plan}`,
-    note: { title: `You're on ${plan}`, text: `${courses} new courses a month, ${hours} hours of video. Thanks for upgrading!`, href: "/new" },
+    note: { title: `You're on ${plan}`, text: `${hours} hours of video a month, courses up to ${maxHours} hours each. Thanks for upgrading!`, href: "/new" },
     body: (
-      <EmailLayout preview={`${courses} new courses a month, ${hours} hours of video. Thanks for supporting CourseIt.`} heading={`You're on ${plan}`} cta={{ label: "Build a course", href: appUrl("/new") }}>
+      <EmailLayout preview={`${hours} hours of video a month. Thanks for supporting CourseIt.`} heading={`You're on ${plan}`} cta={{ label: "Build a course", href: appUrl("/new") }}>
         <P>{hi(name)}</P>
         <P>
-          Thanks for upgrading. With <Strong>{plan}</Strong> you can build <Strong>{courses} new courses a month</Strong>, up to {hours} hours of video
-          in total. You can also retry builds that stopped, and your builds go first when it&apos;s busy.
+          Thanks for upgrading. With <Strong>{plan}</Strong> you can turn <Strong>{hours} hours of video a month</Strong> into new courses, each up to {maxHours}{" "}
+          hours long. You can also retry builds that stopped, and your builds go first when it&apos;s busy.
         </P>
         <P>Your receipt comes separately from Dodo Payments, our payment partner. Manage or cancel any time from Settings → Manage billing.</P>
       </EmailLayout>

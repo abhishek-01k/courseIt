@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { isAdmin } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import { usageFor } from "@/lib/billing";
+import { NO_PLAN } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { coursePath } from "@/lib/paths";
 import { getEnrolledCourses } from "@/modules/course/queries";
@@ -25,7 +26,8 @@ const navLink = "flex min-h-11 items-center gap-3 rounded-xl px-3 text-[0.95rem]
 async function SidebarUser() {
   const session = await auth();
   const admin = isAdmin(session?.user?.email);
-  const plan = admin ? "Admin" : session?.user?.id ? `${(await usageFor(session.user.id)).plan.name} plan` : "Free plan";
+  const name = session?.user?.id ? (await usageFor(session.user.id)).plan.name : NO_PLAN.name;
+  const plan = admin ? "Admin" : name === NO_PLAN.name ? name : `${name} plan`;
   return <UserMenu name={session?.user?.name ?? "Learner"} image={session?.user?.image} plan={plan} admin={admin} />;
 }
 

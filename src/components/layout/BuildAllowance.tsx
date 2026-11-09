@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { buildBlock, shortDate, usageFor } from "@/lib/billing";
-import { formatHours } from "@/lib/plans";
+import { formatHours, noBuilds } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 // Sidebar, above Explore: how many hours of video the learner can still build this month, so the limit is never a surprise.
@@ -14,6 +14,18 @@ export default async function BuildAllowance() {
   if (usage.unlimited) return null;
 
   const { plan } = usage;
+  // Free is paused: nothing to count, just the way to start building.
+  if (noBuilds(plan)) {
+    return (
+      <Link
+        href="/plans"
+        className="mx-0.5 flex shrink-0 flex-col gap-1 rounded-[14px] bg-surface px-3 py-2.5 shadow-[0_0_0_1px_var(--line)] transition-colors hover:bg-lime-soft/50 group-data-[collapsed=true]/side:hidden"
+      >
+        <span className="text-[0.82rem] font-medium">Build your own courses</span>
+        <span className="text-[0.75rem] text-ink-soft">See plans →</span>
+      </Link>
+    );
+  }
   const blocked = buildBlock(usage);
   // Launch offer: one course a month, so count courses rather than hours.
   const byCourse = !!plan.coursesPerMonth;

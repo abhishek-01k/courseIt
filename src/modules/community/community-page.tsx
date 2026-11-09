@@ -1,4 +1,4 @@
-import { Map as MapIcon, Plus, Search, Users } from "lucide-react";
+import { Map as MapIcon, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import CourseTile from "@/components/course-tile";
@@ -6,23 +6,45 @@ import EmptyState from "@/components/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { countCommunityCourses, getCommunityCourses } from "@/modules/course/queries";
+import { COMMUNITY_PAGE, countCommunityCourses, getCommunityCourses, getCommunityFilters } from "@/modules/course/queries";
+import { COURSE_LANGUAGES, COURSE_TAGS, isCourseLanguage, isCourseTag } from "@/lib/course-tags";
+import CommunityFilter from "./components/community-filter";
+import CommunitySearch from "./components/community-search";
 import RoadmapCard from "@/modules/roadmap/components/roadmap-card";
 import { countPublishedRoadmaps, getPublishedRoadmaps } from "@/modules/roadmap/queries";
 
 type Tab = "courses" | "roadmaps";
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
+const picked = (value: unknown) => (typeof value === "string" ? value.split(",") : []);
+
 const read = async (searchParams: Search) => {
-  const { tab, q } = await searchParams;
-  // Courses open first; ?tab=roadmaps shows roadmaps.
-  return { tab: (tab === "roadmaps" ? "roadmaps" : "courses") as Tab, q: (typeof q === "string" ? q : "").trim().slice(0, 80) };
+  const { tab, q, tag, lang, show } = await searchParams;
+  return {
+    // Courses open first; ?tab=roadmaps shows roadmaps.
+    tab: (tab === "roadmaps" ? "roadmaps" : "courses") as Tab,
+    q: (typeof q === "string" ? q : "").trim().slice(0, 80),
+    tags: picked(tag).filter(isCourseTag) as string[],
+    langs: picked(lang).filter(isCourseLanguage) as string[],
+    show: Math.min(Math.max(Number(show) || COMMUNITY_PAGE, COMMUNITY_PAGE), 5000),
+  };
 };
 
-const href = (tab: Tab, q: string) => `/community?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+type View = { q: string; tags?: string[]; langs?: string[]; show?: number };
+const href = (tab: Tab, { q, tags = [], langs = [], show }: View) => {
+  const params = new URLSearchParams({ tab });
+  if (q) params.set("q", q);
+  if (tags.length) params.set("tag", tags.join(","));
+  if (langs.length) params.set("lang", langs.join(","));
+  if (show) params.set("show", String(show));
+  return `/community?${params}`;
+};
 
 async function Tabs({ searchParams }: { searchParams: Search }) {
-  const [{ tab, q }, courses, roadmaps] = await Promise.all([read(searchParams), countCommunityCourses(), countPublishedRoadmaps()]);
+  const [{ tab, q }, courses, roadmaps, counts] = await Promise.all([read(searchParams), countCommunityCourses(), countPublishedRoadmaps(), getCommunityFilters()]);
+  // Only topics and languages that have courses; the button stays hidden until courses are tagged.
+  const topics = COURSE_TAGS.filter((t) => counts.tags.has(t.id)).sort((a, b) => (a.id === "other" ? 1 : b.id === "other" ? -1 : counts.tags.get(b.id)! - counts.tags.get(a.id)!));
+  const languages = COURSE_LANGUAGES.filter((l) => counts.languages.has(l.id)).map((l) => ({ ...l, n: counts.languages.get(l.id)! }));
   const tabs = [
     { id: "courses" as const, label: "Courses", n: courses },
     { id: "roadmaps" as const, label: "Roadmaps", n: roadmaps },
@@ -33,7 +55,7 @@ async function Tabs({ searchParams }: { searchParams: Search }) {
         {tabs.map((t) => (
           <Link
             key={t.id}
-            href={href(t.id, q)}
+            href={href(t.id, { q })}
             aria-current={tab === t.id ? "page" : undefined}
             className={cn("inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-[0.88rem] font-medium transition-colors", tab === t.id ? "bg-moss text-on-moss" : "text-ink-soft hover:text-ink")}
           >
@@ -42,28 +64,16 @@ async function Tabs({ searchParams }: { searchParams: Search }) {
           </Link>
         ))}
       </nav>
-      <form action="/community" className="flex min-h-12 min-w-0 flex-[1_1_260px] items-center gap-2.5 rounded-full bg-surface px-4 text-ink-soft shadow-[0_0_0_1px_var(--line)] focus-within:ring-2 focus-within:ring-dusk">
-        <input type="hidden" name="tab" value={tab} />
-        <Search aria-hidden="true" className="size-[18px] shrink-0" />
-        <label htmlFor="community-search" className="sr-only">
-          Search community
-        </label>
-        <input
-          key={`${tab}-${q}`}
-          id="community-search"
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder={tab === "courses" ? "Search courses or creators…" : "Search roadmaps, like “AI engineer”…"}
-          className="min-w-0 flex-1 bg-transparent text-ink outline-none"
-        />
-      </form>
+      <div className="flex min-w-0 flex-[1_1_320px] items-center gap-2">
+        <CommunitySearch key={tab} initial={q} placeholder={tab === "courses" ? "Search courses, topics or creators…" : "Search roadmaps, like “AI engineer”…"} />
+        {tab === "courses" && topics.length > 0 && <CommunityFilter languages={languages} topics={topics.map((t) => ({ ...t, n: counts.tags.get(t.id)! }))} />}
+      </div>
     </div>
   );
 }
 
 async function Results({ searchParams }: { searchParams: Search }) {
-  const { tab, q } = await read(searchParams);
+  const { tab, q, tags, langs, show } = await read(searchParams);
 
   if (tab === "roadmaps") {
     const session = await auth();
@@ -88,24 +98,41 @@ async function Results({ searchParams }: { searchParams: Search }) {
     );
   }
 
-  const courses = await getCommunityCourses(q);
+  const found = await getCommunityCourses({ q, tags, languages: langs, limit: show });
+  const courses = found.slice(0, show);
   if (!courses.length) {
+    const filtered = tags.length + langs.length > 0;
     return (
-      <EmptyState icon={Users} title={q ? "No courses match" : "No courses yet"} text={q ? `Nothing for “${q}”. Try a creator's name or another topic.` : "Every course anyone builds shows up here, credited to its YouTube creator. Be the first."}>
-        <Link href="/new" className={buttonVariants({ size: "lg" })}>
-          Build a course
-        </Link>
+      <EmptyState icon={Users} title={q || filtered ? "No courses match" : "No courses yet"} text={q ? `Nothing for “${q}”. Try a creator's name or another topic.` : filtered ? "Try another topic or language." : "Every course anyone builds shows up here, credited to its YouTube creator. Be the first."}>
+        {filtered ? (
+          <Link href={href("courses", { q })} scroll={false} className={buttonVariants({ size: "lg" })}>
+            Clear filters
+          </Link>
+        ) : (
+          <Link href="/new" className={buttonVariants({ size: "lg" })}>
+            Build a course
+          </Link>
+        )}
       </EmptyState>
     );
   }
   return (
-    <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-[18px]">
-      {courses.map((course) => (
-        <li key={course.id} className="flex">
-          <CourseTile course={course} />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-[18px]">
+        {courses.map((course) => (
+          <li key={course.id} className="flex">
+            <CourseTile course={course} />
+          </li>
+        ))}
+      </ul>
+      {found.length > show && (
+        <div className="flex justify-center">
+          <Link href={href("courses", { q, tags, langs, show: show + COMMUNITY_PAGE })} scroll={false} className={buttonVariants({ variant: "outline", size: "lg" })}>
+            Load more
+          </Link>
+        </div>
+      )}
+    </>
   );
 }
 

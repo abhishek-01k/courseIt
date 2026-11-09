@@ -14,7 +14,7 @@ export const users = pgTable("user", {
   timezone: text("timezone"), // the learner's IANA zone, so "today" and streaks follow their clock
   minutesPerDay: integer("minutes_per_day").notNull().default(90), // daily learning time (Settings); every course's days are packed from it
   // Billing, kept in step with Dodo Payments by its webhooks (src/lib/billing.ts decides what the learner gets).
-  plan: text("plan").$type<"free" | "pro" | "max">().notNull().default("free"),
+  plan: text("plan").$type<"free" | "basic" | "pro" | "max">().notNull().default("free"),
   planStatus: text("plan_status"), // Dodo's subscription status: active, on_hold, cancelled, expired…
   planRenewsAt: timestamp("plan_renews_at", { mode: "date" }), // end of the paid period
   planCancelsAtRenewal: boolean("plan_cancels_at_renewal").notNull().default(false),
@@ -93,6 +93,8 @@ export const courses = pgTable(
     // A Pro or Max perk: only its builder sees it, and it isn't in Community. Can be made public later, never the
     // other way. Someone else pasting the same video gets their own course (the saved transcript is shared).
     isPrivate: boolean("is_private").notNull().default(false),
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`), // topics from src/lib/course-tags.ts, set by course-tagger.ts
+    language: text("language"), // the language it's taught in; null until tagged
   },
   (t) => [
     index("course_created_by_idx").on(t.createdBy, t.createdAt), // hours used

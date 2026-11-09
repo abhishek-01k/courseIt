@@ -13,7 +13,7 @@ function figure(n: number) {
 async function Tiles() {
   const s = await getPlatformStats();
   const tiles = [
-    { value: figure(s.learners), label: "learners signed up", note: "Free to start, no card needed" },
+    { value: figure(s.learners), label: "learners signed up", note: "Join any built course for free" },
     { value: figure(s.courses), label: "courses built", note: `${figure(s.publicCourses)} of them free for anyone to join` },
     { value: figure(s.videoHours), label: "hours of YouTube", note: "turned into short, structured lessons" },
     { value: figure(s.lessons), label: "lessons written", note: "with study notes from the video" },

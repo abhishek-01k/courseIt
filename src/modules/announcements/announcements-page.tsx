@@ -7,7 +7,7 @@ import AnnouncementForm from "./components/announcement-form";
 import { audienceSizes, listAnnouncements } from "./queries";
 
 export const card = "flex flex-col gap-4 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)]";
-export const AUDIENCE_LABEL = { all: "Everyone", free: "Free learners", paid: "Pro and Max", admins: "Admins only" } as const;
+export const AUDIENCE_LABEL = { all: "Everyone", free: "No paid plan", paid: "Paying learners", admins: "Admins only" } as const;
 const date = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 async function NewForm() {

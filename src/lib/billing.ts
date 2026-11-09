@@ -5,7 +5,7 @@ import { courses, lessons, users } from "@/db/schema";
 import { isAdmin } from "@/lib/admin";
 import { getSubscription } from "@/lib/dodo";
 import { queueEmail } from "@/inngest/send-email";
-import { freePlan, HOURS_COUNT_FROM, PLANS, paymentsLive, type Plan, planForProduct } from "@/lib/plans";
+import { freePlan, HOURS_COUNT_FROM, nextPlan, noBuilds, PLANS, paymentsLive, type Plan, planForProduct } from "@/lib/plans";
 
 // Paid access while the subscription is active or retrying a payment; after a cancel, until the paid
 // period ends. on_hold, failed, expired, paused: back to Free.
@@ -123,6 +123,8 @@ export const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "nume
 export function buildBlock(u: Usage): { title: string; detail: string; upgrade: boolean } | null {
   if (u.unlimited) return null;
   const { plan } = u;
+  // Free is paused (FREE_BUILDS_OPEN): joining stays free, building needs a plan.
+  if (noBuilds(plan)) return { title: "Building new courses needs a plan", detail: "Browse courses other learners have built. They're free to join.", upgrade: true };
   const back = u.hoursBackAt ? shortDate(u.hoursBackAt) : null;
   // Launch offer: one course a month, whatever its length.
   if (u.coursesLeft <= 0) {
@@ -134,7 +136,7 @@ export function buildBlock(u: Usage): { title: string; detail: string; upgrade: 
   }
   if (u.hoursLeft >= 1 / 60) return null;
   // Nobody can upgrade until payments are live, so no upgrade is offered then.
-  const next = !paymentsLive() ? null : plan.id === "free" ? PLANS.pro : plan.id === "pro" ? PLANS.max : null;
+  const next = !paymentsLive() ? null : nextPlan(plan.id);
   return {
     title: plan.launch
       ? `You've used your ${plan.hoursPerMonth} launch hours this month`
@@ -150,10 +152,13 @@ export function buildBlock(u: Usage): { title: string; detail: string; upgrade: 
   };
 }
 
-/** On Pro or Max (admins count too). Paid perks: retrying failed builds, chat support. */
+/** On any paid plan (admins count too). */
 export const isPaid = (u: Usage) => u.admin || u.plan.id !== "free";
 
-/** Retrying a failed build is a Pro and Max feature (for everyone while payments aren't live). It still counts toward Free's limit. */
+/** On Pro or Max (admins count too): private courses and chat support. Basic courses are public, like Free's were. */
+export const hasProPerks = (u: Usage) => u.admin || u.plan.id === "pro" || u.plan.id === "max";
+
+/** Retrying a failed build comes with every paid plan (and for everyone while payments aren't live). */
 export const canRetry = (u: Usage) => isPaid(u) || !paymentsLive();
 
 /** Sent with every build so Inngest runs paid builds first when the queue is busy (see build-course.ts). */

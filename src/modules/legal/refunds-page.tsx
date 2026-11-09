@@ -14,8 +14,8 @@ export default function RefundsPage() {
     >
       <LegalSection title="1. Cancelling">
         <p>
-          You can cancel Pro or Max at any time from <Link href="/settings">Settings → Manage billing</Link>. Cancelling stops the next renewal. You keep
-          your plan until the end of the period you already paid for, then move to Free. Every course you built stays yours, and joining courses others
+          You can cancel your plan at any time from <Link href="/settings">Settings → Manage billing</Link>. Cancelling stops the next renewal. You keep
+          your plan until the end of the period you already paid for, and then it ends. Every course you built stays yours, and joining courses others
           built stays free.
         </p>
       </LegalSection>
@@ -43,7 +43,7 @@ export default function RefundsPage() {
         </p>
         <p>
           Approved refunds go back to the card or payment method you paid with, through Dodo Payments. Your bank may take another 5–10 working days to
-          show it. When a plan is refunded in full, it ends and your account moves to Free.
+          show it. When a plan is refunded in full, it ends.
         </p>
       </LegalSection>
 

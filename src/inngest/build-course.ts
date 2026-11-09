@@ -6,6 +6,7 @@ import { canRetry, usageFor } from "@/lib/billing";
 import { buildsPaused, NO_CAPTIONS_ERROR, noCaptions, PAUSED_BUILD_ERROR } from "@/lib/builds-paused";
 import { AI } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils";
+import { tagCourse } from "@/lib/course-tagger";
 import { planLessons, writeLesson, writePlacementTest } from "@/lib/course-writer";
 import { fetchTranscript } from "@/lib/transcript";
 import { NonRetriableError } from "inngest";
@@ -85,12 +86,12 @@ export const buildCourse = inngest.createFunction(
     // caps steps, not runs, and would write the lessons one at a time instead of in parallel.)
     cancelOn: [{ event: BUILD_COURSE, match: "data.courseId" }],
     // Paid builds first when the queue is busy: a Max build runs ahead of anything queued in the last 5 minutes,
-    // a Pro build ahead of the last 3. Free (and events without a plan) wait their turn. Set in src/lib/billing.ts.
+    // a Pro build ahead of the last 3. Basic and Free (and events without a plan) wait their turn. Set in src/lib/billing.ts.
     priority: { run: "event.data.plan == 'max' ? 300 : event.data.plan == 'pro' ? 180 : 0" },
     onFailure: async ({ event, error }) => {
       const courseId = event.data.event.data.courseId;
       await setCourse(courseId, { status: "failed", error: error.message.slice(0, 500) });
-      // Tell whoever started it (once per course): Retry on Pro and Max, an upgrade link on Free.
+      // Tell whoever started it (once per course): Retry on a paid plan, an upgrade link without one.
       const [course] = await db.select({ title: courses.title, slug: courses.slug, createdBy: courses.createdBy }).from(courses).where(eq(courses.id, courseId));
       // No captions: the course page says so, and an email offering Retry would be wrong.
       if (course?.createdBy && !noCaptions(error.message)) {
@@ -104,7 +105,7 @@ export const buildCourse = inngest.createFunction(
     // resume: keep the plan and the lessons already written; only write what's missing.
     const { courseId, resume = false, plan } = event.data as { courseId: string; resume?: boolean; plan?: string };
     // Who writes the lessons. Pro and Max (and admins, sent as "max"): Nemotron 3 Ultra, the most reliable in benchmarks
-    // (8/8 real lessons, avg 6s, $0.0063 each, 5 Nov 2026), with Lightning then Super as backups (Super last while it's slow). Free: Lightning, fast
+    // (8/8 real lessons, avg 6s, $0.0063 each, 5 Nov 2026), with Lightning then Super as backups (Super last while it's slow). Basic and Free: Lightning, fast
     // and cheap (7/8, avg 7s, $0.0004 each, ~400 words), with Ultra for the odd lesson Lightning can't write. Free used
     // to get Super, but Nebius served Nemotron 3.5 Super at 5–8 tokens/s on 5 Nov (others: 140–230), so Free lessons
     // took minutes and most failed. Measured with src/lib/lesson-speed.check.ts.
@@ -277,7 +278,10 @@ export const buildCourse = inngest.createFunction(
       await buildOrSkip(first);
       await Promise.all(rest.map(buildOrSkip));
     };
-    await Promise.all([placement, writeLessons()]);
+    // Topics and language for Community's filters. Never holds up or fails a build: scripts/tag-courses.ts picks up any it misses.
+    const tagging = step.run("tag the course", () => tagCourse(courseId).catch((error) => console.error(`[tags] ${courseId}`, error)));
+
+    await Promise.all([placement, tagging, writeLessons()]);
 
     await step.run("finish", async () => {
       const [{ notReady }] = await db.select({ notReady: count() }).from(lessons).where(and(eq(lessons.courseId, courseId), eq(lessons.ready, false)));

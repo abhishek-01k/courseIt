@@ -4,7 +4,7 @@
 //
 // Hours are sized from measured build costs (about $0.085 of AI, captions and search per hour of video, Nov 2026), so
 // a learner who uses every hour still leaves more than half of the plan's price after tax and fees, in every region.
-export type PlanId = "free" | "pro" | "max";
+export type PlanId = "free" | "basic" | "pro" | "max";
 export type Interval = "month" | "year";
 export type Region = "in" | "gb" | "us";
 
@@ -17,6 +17,7 @@ export type Plan = {
   maxHours: number; // longest video or playlist one course can be built from
   perks: string[];
   laterPrice?: Record<Region, number>; // the monthly price after the early-user price ends, shown crossed out; make it real when prices go up
+  monthlyOnly?: boolean; // sold monthly only: no yearly price or Dodo product (its `year` price is unused)
   launch?: boolean; // the launch offer that stands in for Free until payments are live (LAUNCH_OFFER)
   coursesPerMonth?: number; // a cap on new courses per cycle on top of the hours (launch offer only)
 };
@@ -35,7 +36,12 @@ export const REGIONS: Record<Region, { currency: string; locale: string; taxNote
 export const regionFor = (country: string | null | undefined): Region => (country === "IN" ? "in" : country === "GB" ? "gb" : "us");
 
 export const formatPrice = (amount: number, region: Region) =>
-  new Intl.NumberFormat(REGIONS[region].locale, { style: "currency", currency: REGIONS[region].currency, maximumFractionDigits: 0 }).format(amount);
+  new Intl.NumberFormat(REGIONS[region].locale, {
+    style: "currency",
+    currency: REGIONS[region].currency,
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 
 // Keep taglines to one short line so every card's price sits at the same height, and perks to a few words.
 export const PLANS: Record<PlanId, Plan> = {
@@ -48,6 +54,16 @@ export const PLANS: Record<PlanId, Plan> = {
     maxHours: 5,
     perks: ["Join any built course, free", "Courses up to 5 hours", "Notes, quizzes and placement tests", "Daily plan and roadmaps"],
   },
+  basic: {
+    id: "basic",
+    name: "Basic",
+    tagline: "Build your own courses.",
+    price: { in: { month: 199, year: 0 }, gb: { month: 4.99, year: 0 }, us: { month: 4.99, year: 0 } },
+    monthlyOnly: true,
+    hoursPerMonth: 5,
+    maxHours: 5,
+    perks: ["Courses up to 5 hours", "Notes, quizzes and placement tests", "Daily plan and roadmaps", "Retry failed builds", "Your courses are shared in Community"],
+  },
   pro: {
     id: "pro",
     name: "Pro",
@@ -56,7 +72,7 @@ export const PLANS: Record<PlanId, Plan> = {
     laterPrice: { in: 799, gb: 24, us: 29 },
     hoursPerMonth: 20,
     maxHours: 10,
-    perks: ["Everything in Free", "Courses up to 10 hours", "Your courses stay private", "Retry failed builds", "Priority course building", "Telegram support"],
+    perks: ["Everything in Basic", "Courses up to 10 hours", "Your courses stay private", "Retry failed builds", "Priority course building", "Telegram support"],
   },
   max: {
     id: "max",
@@ -93,14 +109,34 @@ export const LAUNCH_OFFER: Plan = {
 };
 
 /**
+ * Free is paused: learners without a paid plan can still join and study any built course, but building one needs a
+ * plan, and the Free card is hidden. Set this to true to turn Free's 5 hours and its card back on.
+ */
+export const FREE_BUILDS_OPEN = false;
+
+/** Someone without a paid plan while Free is paused: no hours to build with. */
+export const NO_PLAN: Plan = { ...PLANS.free, name: "No plan", hoursPerMonth: 0, maxHours: 0 };
+
+/** True for a plan that can't build at all (see NO_PLAN). */
+export const noBuilds = (plan: Plan) => plan.hoursPerMonth === 0;
+
+/**
  * Hours count only courses built from this moment: the day hours-based plans launched. Courses built before it were
  * built under the old "one free course" rules, so everyone starts the new plans with their full hours. Their old
  * courses stay theirs and keep working. Safe to leave in place: after 30 days it no longer changes anything.
  */
 export const HOURS_COUNT_FROM = new Date("2026-11-05T00:00:00Z");
 
-/** What a learner without a paid plan gets right now: Free, or the launch offer before payments are live. */
-export const freePlan = () => (paymentsLive() ? PLANS.free : LAUNCH_OFFER);
+/** What a learner without a paid plan gets right now: nothing to build with while Free is paused, or the launch offer before payments are live. */
+export const freePlan = () => (!paymentsLive() ? LAUNCH_OFFER : FREE_BUILDS_OPEN ? PLANS.free : NO_PLAN);
+
+const RANK: Record<PlanId, number> = { free: 0, basic: 1, pro: 2, max: 3 };
+
+/** A paying learner moving to a higher plan: a change to their subscription, never a second checkout. */
+export const isUpgrade = (from: PlanId, to: PlanId) => RANK[from] > 0 && RANK[to] > RANK[from];
+
+/** The plan to suggest when this one runs out. */
+export const nextPlan = (id: PlanId) => (id === "free" ? (FREE_BUILDS_OPEN ? PLANS.pro : PLANS.basic) : id === "basic" ? PLANS.pro : id === "pro" ? PLANS.max : null);
 
 /** Hours as a person reads them: 5 → "5h", 3.33 → "3h 20m", 0.5 → "30m". */
 export function formatHours(hours: number) {
@@ -110,7 +146,7 @@ export function formatHours(hours: number) {
   return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`;
 }
 
-export const PAID_PLANS = [PLANS.pro, PLANS.max];
+export const PAID_PLANS = [PLANS.basic, PLANS.pro, PLANS.max];
 
 type Paid = Exclude<PlanId, "free">;
 
@@ -123,8 +159,8 @@ export function productIdFor(plan: Paid, interval: Interval, region: Region) {
   return process.env[name] || null;
 }
 
-const ALL = (["pro", "max"] as const).flatMap((plan) =>
-  (["month", "year"] as const).flatMap((interval) => (["us", "in", "gb"] as const).map((region) => ({ plan, interval, region }))),
+const ALL = (["basic", "pro", "max"] as const).flatMap((plan) =>
+  (PLANS[plan].monthlyOnly ? (["month"] as const) : (["month", "year"] as const)).flatMap((interval) => (["us", "in", "gb"] as const).map((region) => ({ plan, interval, region }))),
 );
 
 /** The plan, billing interval and region a Dodo product is, or null for one we don't sell. */

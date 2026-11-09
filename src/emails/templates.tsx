@@ -1,4 +1,4 @@
-import { freePlan } from "@/lib/plans";
+import { freePlan, noBuilds } from "@/lib/plans";
 import { appUrl, EmailLayout, P, Strong } from "./layout";
 
 // Every message CourseIt sends. Each takes the details it needs and returns the email (subject and body) and
@@ -10,23 +10,31 @@ const hi = (name?: string | null) => (name ? `Hi ${name.split(" ")[0]},` : "Hi,"
 
 type Email = { subject: string; body: React.ReactElement; note: { title: string; text: string; href: string } };
 
-// What a new learner gets for free right now: one course a month during the launch offer, otherwise hours.
+// What a new learner gets for free right now: one course a month during the launch offer, otherwise hours (see noBuilds in the welcome email for when Free is paused).
 const freeAllowance = () => (freePlan().coursesPerMonth ? "You get one free course every month" : `You get ${freePlan().hoursPerMonth} hours of video free every month`);
 
 export const TEMPLATES = {
   welcome: ({ name }: { name?: string | null }): Email => ({
     subject: "Welcome to CourseIt",
-    note: { title: "Welcome to CourseIt", text: `${freeAllowance()}. Paste any long YouTube video to start.`, href: "/new" },
+    note: noBuilds(freePlan())
+      ? { title: "Welcome to CourseIt", text: "Join any course other learners built, free. To build your own, pick a plan.", href: "/community" }
+      : { title: "Welcome to CourseIt", text: `${freeAllowance()}. Paste any long YouTube video to start.`, href: "/new" },
     body: (
-      <EmailLayout preview="Turn any long YouTube video into a course with lessons, quizzes and a daily plan." heading="Welcome to CourseIt" cta={{ label: "Build your first course", href: appUrl("/new") }}>
+      <EmailLayout preview="Turn any long YouTube video into a course with lessons, quizzes and a daily plan." heading="Welcome to CourseIt" cta={noBuilds(freePlan()) ? { label: "Browse courses", href: appUrl("/community") } : { label: "Build your first course", href: appUrl("/new") }}>
         <P>{hi(name)}</P>
         <P>
           Paste any long YouTube video or playlist and CourseIt turns it into a course: short lessons, notes, quizzes and a plan that fits your day.
         </P>
-        <P>
-          <Strong>{freeAllowance()}</Strong>, up to {freePlan().maxHours} hours long. Courses other
-          learners already built are always free to join and never use your hours, so check Community too.
-        </P>
+        {noBuilds(freePlan()) ? (
+          <P>
+            Courses other learners already built are <Strong>always free to join</Strong>, so start in Community. To build your own, plans start with Basic.
+          </P>
+        ) : (
+          <P>
+            <Strong>{freeAllowance()}</Strong>, up to {freePlan().maxHours} hours long. Courses other
+            learners already built are always free to join and never use your hours, so check Community too.
+          </P>
+        )}
       </EmailLayout>
     ),
   }),
@@ -52,7 +60,7 @@ export const TEMPLATES = {
 
   buildStopped: ({ name, title, slug, canRetry }: { name?: string | null; title: string; slug: string; canRetry: boolean }): Email => ({
     subject: `We couldn't finish your course: ${title}`,
-    note: { title: "Your course stopped building", text: `${title}. ${canRetry ? "Press Retry to pick up where it stopped." : "Retry is part of Pro and Max."}`, href: canRetry ? `/courses/${slug}` : "/plans?reason=retry" },
+    note: { title: "Your course stopped building", text: `${title}. ${canRetry ? "Press Retry to pick up where it stopped." : "Retry comes with every paid plan."}`, href: canRetry ? `/courses/${slug}` : "/plans?reason=retry" },
     body: (
       <EmailLayout
         preview="Something went wrong while building it. Everything already written is kept."
@@ -66,7 +74,7 @@ export const TEMPLATES = {
         <P>
           {canRetry
             ? "Press Retry on the course page and it picks up where it stopped."
-            : "Retrying a build is part of Pro and Max. Upgrade and Retry picks up where it stopped."}
+            : "Retrying a build comes with every paid plan. Upgrade and Retry picks up where it stopped."}
         </P>
       </EmailLayout>
     ),
@@ -80,7 +88,7 @@ export const TEMPLATES = {
         <P>{hi(name)}</P>
         <P>
           Thanks for upgrading. With <Strong>{plan}</Strong> you can turn <Strong>{hours} hours of video a month</Strong> into new courses, each up to {maxHours}{" "}
-          hours long. You can also retry builds that stopped, and your builds go first when it&apos;s busy.
+          hours long. You can also retry builds that stopped{plan === "Basic" ? "." : ", and your builds go first when it\u2019s busy."}
         </P>
         <P>Your receipt comes separately from Dodo Payments, our payment partner. Manage or cancel any time from Settings → Manage billing.</P>
       </EmailLayout>
@@ -103,12 +111,12 @@ export const TEMPLATES = {
 
   planEnding: ({ name, plan, endsAt }: { name?: string | null; plan: string; endsAt: string }): Email => ({
     subject: `Your ${plan} plan ends on ${date(endsAt)}`,
-    note: { title: `Your ${plan} plan is ending`, text: `You keep it until ${date(endsAt)}, then move to Free. Your courses stay yours.`, href: "/settings" },
+    note: { title: `Your ${plan} plan is ending`, text: `You keep it until ${date(endsAt)}, then it ends. Your courses stay yours.`, href: "/settings" },
     body: (
       <EmailLayout preview="You keep everything until then. Changed your mind? Keep your plan in one click." heading={`Your ${plan} plan is ending`} cta={{ label: "Keep my plan", href: appUrl("/api/billing/portal") }}>
         <P>{hi(name)}</P>
         <P>
-          Your <Strong>{plan}</Strong> plan won&apos;t renew. You keep it until <Strong>{date(endsAt)}</Strong>, then your account moves to Free.
+          Your <Strong>{plan}</Strong> plan won&apos;t renew. You keep it until <Strong>{date(endsAt)}</Strong>, then it ends.
         </P>
         <P>Every course you built stays yours, with all your notes and progress. Changed your mind? You can keep your plan from Manage billing.</P>
       </EmailLayout>

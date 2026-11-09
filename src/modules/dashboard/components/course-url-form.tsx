@@ -38,11 +38,11 @@ function Blocked({ title, detail, upgrade }: BuildBlock) {
 
 /**
  * `caption`: a short line under the form (e.g. "Already built by someone? It opens instantly"), hidden when locked.
- * `isPaid`: Pro and Max courses are private by default, Free ones are public; a short line says which. Undefined hides it.
+ * `keepsPrivate`: Pro and Max courses are private by default, others are public; a short line says which. Undefined hides it.
  */
-export default function CourseUrlForm({ blocked, caption, isPaid }: { blocked?: BuildBlock | null; caption?: string; isPaid?: boolean }) {
+export default function CourseUrlForm({ blocked, caption, keepsPrivate }: { blocked?: BuildBlock | null; caption?: string; keepsPrivate?: boolean }) {
   const sharedNote =
-    isPaid === undefined ? null : isPaid ? "Your course stays private. You can make it public later." : "Courses built on Free are shared in Community. Pro and Max keep them private.";
+    keepsPrivate === undefined ? null : keepsPrivate ? "Your course stays private. You can make it public later." : "Courses built on your plan are shared in Community. Pro and Max keep them private.";
   const [state, action, pending] = useActionState<BuildCourseState, FormData>(
     async (prev, data) => (await act(() => buildCourseAction(prev, data), "Couldn't start your course.")) ?? prev,
     {},
@@ -86,7 +86,7 @@ export default function CourseUrlForm({ blocked, caption, isPaid }: { blocked?: 
             {shown}
           </p>
         )}
-        {/* Builders should know who sees their course: Free courses go to Community, paid ones stay private. */}
+        {/* Builders should know who sees their course: Basic courses go to Community, Pro and Max ones stay private. */}
         {sharedNote && <p className="text-center text-[0.82rem] text-ink-soft">{sharedNote}</p>}
       </form>
       {caption && <span className="font-mono text-label tracking-[0.07em] text-ink-soft uppercase">{caption}</span>}

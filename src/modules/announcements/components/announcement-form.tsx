@@ -9,7 +9,7 @@ type Initial = { subject: string; heading: string; body: string; ctaLabel: strin
 
 const input = "w-full rounded-xl bg-paper px-3.5 py-2.5 text-[0.95rem] shadow-[inset_0_0_0_1px_var(--line)] outline-none focus:shadow-[inset_0_0_0_2px_var(--moss)]";
 const label = "flex flex-col gap-1.5 text-[0.88rem] font-medium";
-const AUDIENCE = { all: "Everyone", free: "Free learners", paid: "Pro and Max", admins: "Admins only (dry run)" } as const;
+const AUDIENCE = { all: "Everyone", free: "No paid plan", paid: "Paying learners", admins: "Admins only (dry run)" } as const;
 
 // Write or edit a draft. Saving a new one opens it, with a preview and the send buttons.
 export default function AnnouncementForm({ id, initial, sizes }: { id: string | null; initial?: Initial; sizes: Sizes }) {

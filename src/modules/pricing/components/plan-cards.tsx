@@ -4,11 +4,11 @@ import { Check, CircleCheck, Lock } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { formatPrice, type Interval, LAUNCH_OFFER, PLANS, type PlanId, REGIONS, type Region } from "@/lib/plans";
+import { FREE_BUILDS_OPEN, formatPrice, type Interval, isUpgrade, LAUNCH_OFFER, PLANS, type PlanId, REGIONS, type Region } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
-// Before payments are live, the Free card shows the launch offer everyone actually gets.
-const plansFor = (live: boolean) => [live ? PLANS.free : LAUNCH_OFFER, PLANS.pro, PLANS.max];
+// Before payments are live, the Free card shows the launch offer everyone actually gets. No Free card while it's paused.
+const plansFor = (live: boolean) => [...(!live ? [LAUNCH_OFFER] : FREE_BUILDS_OPEN ? [PLANS.free] : []), PLANS.basic, PLANS.pro, PLANS.max];
 
 // Each line is something the product does today; keep them true (refunds: src/modules/legal/refunds-page.tsx,
 // renewal reminders: src/inngest/renewal-reminders.ts, uncounted failed builds: usageFor in src/lib/billing.ts,
@@ -20,6 +20,7 @@ const TRUST = ["Existing courses don't use hours", "Failed builds don't use hour
 // `live`: false until payments are switched on (paymentsLive in src/lib/billing.ts); paid plans then say "Coming soon".
 export default function PlanCards({ region, current, live }: { region: Region; current?: PlanId; live: boolean }) {
   const [interval, setBillingInterval] = useState<Interval>("month");
+  const plans = plansFor(live);
 
   return (
     <div className="mt-10 flex w-full flex-col items-center gap-8">
@@ -38,12 +39,14 @@ export default function PlanCards({ region, current, live }: { region: Region; c
         ))}
       </div>
 
-      <ul className="grid w-full gap-4 md:grid-cols-3">
-        {plansFor(live).map((plan) => {
+      <ul className={cn("grid w-full gap-4 md:grid-cols-2", plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+        {plans.map((plan) => {
           const featured = plan.id === "pro";
-          const price = plan.price[region][interval];
+          // A monthly-only plan keeps its monthly price when the toggle is on Yearly.
+          const billed = plan.monthlyOnly ? "month" : interval;
+          const price = plan.price[region][billed];
           // Monthly only: the early-user price next to the price it goes up to later (yearly already shows its saving).
-          const later = interval === "month" ? plan.laterPrice?.[region] : undefined;
+          const later = billed === "month" ? plan.laterPrice?.[region] : undefined;
           return (
             <li
               key={plan.id}
@@ -57,7 +60,7 @@ export default function PlanCards({ region, current, live }: { region: Region; c
                 {featured && <span className="rounded-full bg-lime-soft px-2.5 py-1 text-[0.75rem] font-medium text-moss">Most popular</span>}
               </div>
               <p className="-mt-3 text-[0.92rem] text-ink-soft">{plan.tagline}</p>
-              {/* Monthly: the price it goes up to later, crossed out. Free keeps an empty line so the prices line up. */}
+              {/* Monthly: the price it goes up to later, crossed out. Plans without one keep an empty line so the prices line up. */}
               {interval === "month" && (
                 <p aria-hidden={!later} className={cn("-mb-3 flex items-center gap-2 text-[0.85rem]", !later && "invisible")}>
                   <s className="text-ink-soft tabular-nums">
@@ -69,11 +72,12 @@ export default function PlanCards({ region, current, live }: { region: Region; c
               )}
               <p className="flex items-baseline gap-1.5">
                 <span className="font-display text-[2.6rem] leading-none tabular-nums">{formatPrice(price, region)}</span>
-                <span className="text-ink-soft">{price === 0 ? "forever" : interval === "month" ? "/ month" : "/ year"}</span>
+                <span className="text-ink-soft">{price === 0 ? "forever" : billed === "month" ? "/ month" : "/ year"}</span>
               </p>
               {/* Free keeps an empty line here so every card's hours box lines up. */}
               <p aria-hidden={price === 0} className={cn("-mt-4 text-[0.8rem] text-ink-soft", price === 0 && "invisible")}>
                 {REGIONS[region].taxNote}
+                {plan.monthlyOnly && interval === "year" ? " · monthly only" : ""}
               </p>
               <div className="flex flex-col gap-0.5 rounded-2xl bg-lime-soft/60 px-4 py-3">
                 <p className="text-[1.05rem]">
@@ -105,14 +109,14 @@ export default function PlanCards({ region, current, live }: { region: Region; c
                 <Link href="/api/billing/portal" prefetch={false} className={buttonVariants({ size: "lg", variant: "outline", className: "w-full" })}>
                   Manage billing
                 </Link>
-              ) : current === "pro" && plan.id === "max" ? (
+              ) : current && isUpgrade(current, plan.id) ? (
                 // A full page load: the in-app router can serve /plans from its 30s cache without the confirm panel.
-                <a href="/plans?upgrade=max" className={buttonVariants({ size: "lg", className: "w-full" })}>
-                  Upgrade to Max
+                <a href={`/plans?upgrade=${plan.id}`} className={buttonVariants({ size: "lg", className: "w-full" })}>
+                  Upgrade to {plan.name}
                 </a>
               ) : (
               <Link
-                href={plan.id === "free" ? "/new" : `/api/billing/checkout?plan=${plan.id}&interval=${interval}`}
+                href={plan.id === "free" ? "/new" : `/api/billing/checkout?plan=${plan.id}&interval=${billed}`}
                 prefetch={false}
                 className={buttonVariants({ size: "lg", variant: featured ? "default" : "outline", className: "w-full" })}
               >

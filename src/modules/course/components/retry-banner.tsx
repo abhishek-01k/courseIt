@@ -8,7 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { retryCourseAction } from "../actions";
 
 // Shown when a build failed outright or finished with some lessons missing (usually a busy moment at Nebius).
-// Retrying is a Pro and Max feature: on Free (`canRetry` false) the button links to the plans instead.
+// Retrying comes with every paid plan: without one (`canRetry` false) the button links to the plans instead.
 export default function RetryBanner({ courseId, message, canRetry }: { courseId: string; message: string; canRetry: boolean }) {
   const [pending, start] = useTransition();
   if (!canRetry) {

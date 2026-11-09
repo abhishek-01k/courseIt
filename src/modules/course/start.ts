@@ -2,11 +2,11 @@ import { and, count, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { db } from "@/db";
 import { courses, courseVideos, enrollments, lessons, videos, videoSegments } from "@/db/schema";
 import { BUILD_COURSE, inngest } from "@/inngest/client";
-import { buildBlock, buildPriority, canRetry, isPaid, paymentsLive, readUsage, shortDate, type Usage, usageFor } from "@/lib/billing";
+import { buildBlock, buildPriority, canRetry, hasProPerks, paymentsLive, readUsage, shortDate, type Usage, usageFor } from "@/lib/billing";
 import { BUILDS_PAUSED_MESSAGE, buildsPaused, NO_CAPTIONS_ERROR, noCaptions, stoppedByPause } from "@/lib/builds-paused";
 import { COURSE_LIMITS } from "@/lib/constants";
 import { newSlug } from "@/lib/paths";
-import { formatHours, PLANS } from "@/lib/plans";
+import { formatHours, nextPlan } from "@/lib/plans";
 import type { UpgradeReason } from "@/types/course";
 import { fetchTranscripts } from "@/lib/transcript";
 import { formatDuration } from "@/lib/utils";
@@ -28,7 +28,7 @@ export function planRefusal(usage: Usage, seconds: number, what: string): Refusa
   if (usage.unlimited) return null;
   const { plan } = usage;
   // No upgrade to offer until payments are live.
-  const up = !paymentsLive() ? null : plan.id === "free" ? PLANS.pro : plan.id === "pro" ? PLANS.max : null;
+  const up = !paymentsLive() ? null : nextPlan(plan.id);
   const soon = plan.launch ? " Pro and Max are coming soon." : "";
   const blocked = buildBlock(usage);
   if (blocked) {
@@ -193,8 +193,8 @@ export async function startCourse(userId: string, url: string): Promise<Refusal 
         durationSeconds,
         createdBy: userId,
         // Pro and Max courses are private by default (only the builder sees them); they can make one public later.
-        // Free courses are public and shared in Community. Either way, only the transcript is reused for others.
-        isPrivate: isPaid(usage),
+        // Basic courses are public and shared in Community. Either way, only the transcript is reused for others.
+        isPrivate: hasProPerks(usage),
       }),
       db.insert(courseVideos).values(kept.map((v, position) => ({ courseId, videoId: v.id, position }))),
       // Old partial notes from the Gemini reader would mix with the full transcript.

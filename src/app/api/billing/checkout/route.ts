@@ -6,7 +6,7 @@ import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { paymentsLive, usageFor } from "@/lib/billing";
 import { createCheckout } from "@/lib/dodo";
-import { type Interval, type PlanId, productIdFor } from "@/lib/plans";
+import { type Interval, isUpgrade, PLANS, type PlanId, productIdFor } from "@/lib/plans";
 import { currentRegion } from "@/lib/region";
 
 // /api/billing/checkout?plan=pro&interval=month → Dodo's checkout page. Learners already paying change
@@ -19,17 +19,17 @@ export async function GET(request: NextRequest) {
   if (!paymentsLive()) redirect("/plans?error=soon");
 
   const plan = request.nextUrl.searchParams.get("plan") as PlanId;
-  const interval = (request.nextUrl.searchParams.get("interval") === "year" ? "year" : "month") as Interval;
+  const interval = (request.nextUrl.searchParams.get("interval") === "year" && !PLANS[plan]?.monthlyOnly ? "year" : "month") as Interval;
   // Same region as the prices the learner was shown. A region without its products set falls back to US prices.
   const visitor = await currentRegion();
-  const paid = plan === "pro" || plan === "max";
+  const paid = plan === "basic" || plan === "pro" || plan === "max";
   const region = paid && productIdFor(plan, interval, visitor) ? visitor : "us";
   const productId = paid ? productIdFor(plan, interval, region) : null;
   if (!productId) redirect("/plans");
 
   const usage = await usageFor(userId);
-  // Already paying: Pro → Max is a plan change (confirmed on /plans), anything else is managed in Dodo's portal.
-  if (usage.plan.id === "pro" && plan === "max" && usage.canManage) redirect("/plans?upgrade=max");
+  // Already paying: moving up is a plan change (confirmed on /plans), anything else is managed in Dodo's portal.
+  if (isUpgrade(usage.plan.id, plan) && usage.canManage) redirect(`/plans?upgrade=${plan}`);
   if (usage.plan.id !== "free" && usage.canManage) redirect("/api/billing/portal");
 
   const [user] = await db.select({ email: users.email, name: users.name, dodoCustomerId: users.dodoCustomerId }).from(users).where(eq(users.id, userId));

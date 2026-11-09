@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import CourseTile from "@/components/course-tile";
 import { RevealGroup, RevealItem } from "@/components/motion/reveal";
+import { buttonVariants } from "@/components/ui/button";
 import { currentRegion } from "@/lib/region";
 import { getPopularCourses } from "@/modules/course/queries";
 import SectionHeading from "./section-heading";
@@ -28,6 +30,12 @@ export default function PopularCourses() {
         <Suspense fallback={<div aria-hidden="true" className="mt-12 h-80 rounded-card bg-surface shadow-[0_0_0_1px_var(--line)]" />}>
           <Tiles />
         </Suspense>
+        {/* Community needs an account: signed-out visitors go through /login and land back there. */}
+        <div className="mt-10 flex justify-center">
+          <Link href="/community" prefetch={false} className={buttonVariants({ variant: "outline", size: "lg" })}>
+            All courses
+          </Link>
+        </div>
       </div>
     </section>
   );

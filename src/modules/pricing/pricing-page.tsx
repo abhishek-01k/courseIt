@@ -30,11 +30,12 @@ export default function PricingPage() {
         </h2>
         {[
           ["What uses my hours?", "Building a new course from a YouTube link nobody has shared yet. A 3-hour playlist uses 3 hours. If the course already exists, it opens instantly and uses nothing."],
-          ["How many courses is that?", "The typical course built on CourseIt is about 5½ hours of video. So Free covers one shorter course a month, Pro about 3 to 4, and Max about 7."],
-          ["When do my hours come back?", "On Free, your 5 hours renew every month on the day you signed up; unused hours don't carry over. On Pro and Max, each build's hours come back 30 days after you build it."],
-          ["What if a video is too long for my plan?", "We tell you before anything starts. Free builds courses up to 5 hours, Pro up to 10 and Max up to 20. Nothing is used and nothing is charged."],
-          ["Who can see the courses I build?", "On Pro and Max, every course you build is private: only you can see it, and it isn't listed in Community. You can make one public from its menu, but a public course can't be made private again. Courses built on Free are shared in Community. Either way, only the video's own captions are reused to serve others."],
-          ["What if a build fails?", "If it stops before any lesson is written, it doesn't use your hours. On Pro and Max, Retry picks up where it stopped and keeps every lesson already written."],
+          ["Is there a free plan?", "You can join and study any course someone has already built for free, with no plan at all. Building new courses starts with Basic."],
+          ["How many courses is that?", "The typical course built on CourseIt is about 5½ hours of video. So Basic covers one shorter course a month, Pro about 3 to 4, and Max about 7."],
+          ["When do my hours come back?", "Each build's hours come back 30 days after you build it."],
+          ["What if a video is too long for my plan?", "We tell you before anything starts. Basic builds courses up to 5 hours, Pro up to 10 and Max up to 20. Nothing is used and nothing is charged."],
+          ["Who can see the courses I build?", "On Pro and Max, every course you build is private: only you can see it, and it isn't listed in Community. You can make one public from its menu, but a public course can't be made private again. Courses built on Basic are shared in Community. Either way, only the video's own captions are reused to serve others."],
+          ["What if a build fails?", "If it stops before any lesson is written, it doesn't use your hours. On every paid plan, Retry picks up where it stopped and keeps every lesson already written."],
           ["Can I cancel?", "Any time, from Settings → Manage billing. You keep your plan until the end of the period you paid for, and every course you built stays yours."],
           ["Who handles payments?", "Dodo Payments, our merchant of record. They take cards worldwide, handle sales tax and send an invoice for every payment. We never see your card details."],
           ["Are taxes included?", "In India, prices include GST, and in the UK they include VAT. Elsewhere, prices are in US dollars and any sales tax or VAT is added at checkout."],

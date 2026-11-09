@@ -1,5 +1,5 @@
 import type { Region } from "@/lib/plans";
-import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
+import { and, arrayOverlaps, asc, count, desc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 import { attempts, courses, courseSteps, courseVideos, enrollments, lessonProgress, lessons, lessonSkips, lessonWatch, notes, placementQuestions, questions, users, videos, videoSegments } from "@/db/schema";
@@ -50,19 +50,74 @@ export async function isEnrolled(userId: string, courseId: string) {
   return Boolean(row);
 }
 
-// ponytail: top 60 by learners matching the search; paging when Community has more courses than fit.
-export function getCommunityCourses(q = "") {
+export const COMMUNITY_PAGE = 60;
+
+// Filler a learner adds to a search; they'd otherwise rule out every course without the word in it.
+const FILLER = new Set(["a", "an", "the", "of", "in", "for", "to", "and", "with", "on", "course", "courses", "tutorial", "tutorials", "full", "complete", "free", "learn", "learning", "video", "videos", "class", "classes"]);
+// "Learning" counts after another word ("machine learning") and "class" before a number ("class 10"). If every word is
+// filler, the search keeps them all.
+function searchWords(q: string) {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 8);
+  const kept = words.filter((w, i) => !FILLER.has(w) || (w === "learning" && i > 0) || (w === "class" && /^\d/.test(words[i + 1] ?? "")));
+  return kept.length ? kept : words;
+}
+
+const escapeRegex = (word: string) => word.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+
+type CommunityFilter = { q?: string; tags?: string[]; languages?: string[]; limit?: number };
+
+/** A page of Community: most-taken first, or best match first when searching. Asks for one extra so the page knows if there's more. */
+export function getCommunityCourses({ q = "", tags = [], languages = [], limit = COMMUNITY_PAGE }: CommunityFilter = {}) {
   const learners = count(enrollments.userId);
-  const match = q ? or(ilike(courses.title, `%${q}%`), ilike(courses.channel, `%${q}%`)) : undefined;
+  // Each word must be somewhere: in the title or channel from the start of a word (so "pyth" finds Python as you type,
+  // and "ai" doesn't find "explained"), or as a whole word in a lesson title. Courses with every word as a whole word
+  // in their title or channel come first.
+  const words = searchWords(q).map(escapeRegex);
+  const start = (w: string) => `(?<![[:alnum:]])${w}`;
+  const whole = (w: string) => `${start(w)}(?![[:alnum:]])`;
+  const inHeading = (pattern: string) => or(sql`${courses.title} ~* ${pattern}`, sql`${courses.channel} ~* ${pattern}`);
+  const matches = words.map((w) =>
+    or(inHeading(start(w)), sql`exists (select 1 from ${lessons} where ${lessons.courseId} = ${courses.id} and ${lessons.title} ~* ${whole(w)})`),
+  );
+  const best = words.length ? and(...words.map((w) => inHeading(whole(w)))) : undefined;
   return db
-    .select({ id: courses.id, slug: courses.slug, title: courses.title, channel: courses.channel, thumbnail: courses.thumbnail, status: courses.status, durationSeconds: courses.durationSeconds, addedBy: users.name, learners })
+    .select({
+      id: courses.id,
+      slug: courses.slug,
+      title: courses.title,
+      channel: courses.channel,
+      thumbnail: courses.thumbnail,
+      status: courses.status,
+      durationSeconds: courses.durationSeconds,
+      addedBy: users.name,
+      learners,
+      tags: courses.tags,
+    })
     .from(courses)
     .leftJoin(users, eq(users.id, courses.createdBy))
     .leftJoin(enrollments, eq(enrollments.courseId, courses.id))
-    .where(and(ne(courses.status, "failed"), eq(courses.isPrivate, false), match))
+    .where(
+      and(
+        ne(courses.status, "failed"),
+        eq(courses.isPrivate, false),
+        ...matches,
+        tags.length ? arrayOverlaps(courses.tags, tags) : undefined, // any of the ticked topics
+        languages.length ? inArray(courses.language, languages) : undefined,
+      ),
+    )
     .groupBy(courses.id, users.name)
-    .orderBy(desc(learners), desc(courses.createdAt))
-    .limit(60);
+    .orderBy(...(best ? [sql`(${best}) desc`] : []), desc(learners), desc(courses.createdAt))
+    .limit(limit + 1);
+}
+
+/** How many Community courses each topic and language has, for the filters. Empty until courses are tagged. */
+export async function getCommunityFilters() {
+  const visible = sql`${courses.status} <> 'failed' and not ${courses.isPrivate}`;
+  const [tags, languages] = await Promise.all([
+    db.execute<{ id: string; n: number }>(sql`select tag as id, count(*)::int as n from ${courses}, unnest(${courses.tags}) as tag where ${visible} group by tag`),
+    db.select({ id: courses.language, n: count() }).from(courses).where(and(visible, isNotNull(courses.language))).groupBy(courses.language),
+  ]);
+  return { tags: new Map(tags.rows.map((t) => [t.id, t.n])), languages: new Map(languages.map((l) => [l.id as string, l.n])) };
 }
 
 /**

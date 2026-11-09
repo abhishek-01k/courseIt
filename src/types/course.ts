@@ -14,4 +14,5 @@ export type CourseTileData = {
   addedBy?: string | null;
   learners?: number;
   isPrivate?: boolean; // only its builder sees it (a Pro and Max perk)
+  tags?: string[]; // topics, shown in Community
 };

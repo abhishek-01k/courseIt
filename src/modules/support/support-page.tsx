@@ -6,8 +6,7 @@ import PageHeader from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
-import { isPaid, usageFor } from "@/lib/billing";
-import { freePlan } from "@/lib/plans";
+import { hasProPerks, usageFor } from "@/lib/billing";
 import { LEGAL } from "@/lib/constants";
 
 // /support: how to reach us. There's no mail service, so "Email support" opens the learner's own mail app with
@@ -49,7 +48,7 @@ async function ChatCard() {
   if (!whatsapp && !telegram) return null;
 
   const usage = await usageFor(user.id);
-  if (!isPaid(usage)) {
+  if (!hasProPerks(usage)) {
     return (
       <div className="flex flex-col gap-4 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
@@ -106,7 +105,7 @@ const HELP: [string, React.ReactNode][] = [
   [
     "Used up your hours?",
     <>
-      Plans are measured in hours of video built into new courses: {freePlan().coursesPerMonth ? `one free course a month, up to ${freePlan().maxHours} hours,` : `${freePlan().hoursPerMonth} hours a month on Free,`} renewing on the day you signed up; on Pro and Max, each build&apos;s hours come back after 30 days. Joining a course someone already built is always free. See <Link href="/plans">Plans</Link> for more hours.
+      Plans are measured in hours of video built into new courses, and each build&apos;s hours come back after 30 days. Joining a course someone already built is always free. See <Link href="/plans">Plans</Link> for more hours.
     </>,
   ],
   ["A course didn't finish building", "Open it and choose Retry. It keeps every lesson that's done and only builds what's missing. Still stuck? Email us the link."],

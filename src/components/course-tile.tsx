@@ -2,6 +2,7 @@ import { Lock } from "lucide-react";
 import Thumbnail from "@/components/thumbnail";
 import Link from "next/link";
 import StatusBadge from "@/components/status-badge";
+import { tagLabel } from "@/lib/course-tags";
 import { coursePath } from "@/lib/paths";
 import { formatDuration } from "@/lib/utils";
 import type { CourseTileData } from "@/types/course";
@@ -16,6 +17,7 @@ const STATUS = {
 
 export default function CourseTile({ course }: { course: CourseTileData }) {
   const [tone, label] = STATUS[course.status];
+  const topics = (course.tags ?? []).filter((t) => t !== "other").slice(0, 2).flatMap((t) => tagLabel(t) ?? []);
   return (
     <Link
       href={coursePath(course.slug)}
@@ -42,6 +44,15 @@ export default function CourseTile({ course }: { course: CourseTileData }) {
         <div className="flex flex-col gap-2">
           <h3 className="line-clamp-2 text-h3 font-medium">{course.title}</h3>
           <span className="text-[0.9rem] font-medium">{course.channel}</span>
+          {topics.length > 0 && (
+            <span className="flex flex-wrap gap-1.5">
+              {topics.map((topic) => (
+                <span key={topic} className="rounded-full bg-lime-soft px-2.5 py-0.5 text-[0.75rem] font-medium text-pill-ink">
+                  {topic}
+                </span>
+              ))}
+            </span>
+          )}
         </div>
         <div className="justify-end">
           {(course.addedBy || course.learners !== undefined) && (

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
-import { buildBlock, isPaid, usageFor } from "@/lib/billing";
+import { buildBlock, hasProPerks, usageFor } from "@/lib/billing";
 import CourseUrlForm from "./course-url-form";
 
 async function Form({ caption }: { caption?: string }) {
@@ -8,7 +8,7 @@ async function Form({ caption }: { caption?: string }) {
   const userId = session?.user?.id;
   if (!userId) return <CourseUrlForm caption={caption} />;
   const usage = await usageFor(userId);
-  return <CourseUrlForm caption={caption} blocked={buildBlock(usage)} isPaid={isPaid(usage)} />;
+  return <CourseUrlForm caption={caption} blocked={buildBlock(usage)} keepsPrivate={hasProPerks(usage)} />;
 }
 
 /** The "paste a YouTube link" form, locked when the learner has no builds left on their plan. */

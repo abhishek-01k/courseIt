@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { shortDate, usageFor } from "@/lib/billing";
-import { formatHours } from "@/lib/plans";
+import { formatHours, noBuilds } from "@/lib/plans";
 
 const date = (d: Date) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
@@ -25,6 +25,8 @@ export default async function PlanSummary() {
             ·{" "}
             {usage.unlimited
               ? `${usage.hoursUsed} hours of video built this month`
+              : noBuilds(plan)
+                ? "join and study any built course"
               : plan.coursesPerMonth
                 ? `${usage.coursesLeft} of ${plan.coursesPerMonth} free course left this month (up to ${plan.maxHours}h)${usage.hoursBackAt ? `, renews ${shortDate(usage.hoursBackAt)}` : ""}`
                 : `${formatHours(usage.hoursLeft)} of ${plan.hoursPerMonth} hours left this month${plan.id === "free" && usage.hoursBackAt ? `, renews ${shortDate(usage.hoursBackAt)}` : ""}`}
@@ -37,7 +39,9 @@ export default async function PlanSummary() {
               ? usage.cancelsAtRenewal
                 ? `Ends on ${date(usage.renewsAt)}. Your courses stay yours after that.`
                 : `Renews on ${date(usage.renewsAt)}.`
-              : `Up to ${plan.maxHours} hours per course. Joining courses others built is always free.`}
+              : noBuilds(plan)
+                ? "Choose a plan to build your own courses."
+                : `Up to ${plan.maxHours} hours per course. Joining courses others built is always free.`}
         </p>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">

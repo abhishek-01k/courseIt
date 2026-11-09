@@ -7,7 +7,7 @@ import EmptyState from "@/components/empty-state";
 import PageHeader from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
-import { isPaid, usageFor } from "@/lib/billing";
+import { hasProPerks, usageFor } from "@/lib/billing";
 import { cn } from "@/lib/utils";
 import { getEnrolledCourses } from "@/modules/course/queries";
 
@@ -63,7 +63,7 @@ async function CourseList({ searchParams }: { searchParams: Search }) {
             </li>
           ))}
         </ul>
-      ) : isPaid(usage) ? (
+      ) : hasProPerks(usage) ? (
         <EmptyState icon={Lock} title="No private courses yet" text="On Pro and Max, every course you build is private: only you see it, and it isn't listed in Community.">
           <Link href="/new" className={buttonVariants({ size: "lg" })}>
             Build a private course

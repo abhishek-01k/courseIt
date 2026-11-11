@@ -6,7 +6,7 @@ const shortDay = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateStrin
  * One series of daily counts as thin bars (single hue, so no legend: the title names it). Each column is a
  * full-height hover target with its own tooltip; a hidden table carries the same numbers for screen readers.
  */
-export function DayBars({ title, points, unit }: { title: string; points: { day: string; value: number }[]; unit: string }) {
+export function DayBars({ title, points, unit, summary }: { title: string; points: { day: string; value: number }[]; unit: string; summary?: string }) {
   const max = Math.max(1, ...points.map((p) => p.value));
   const total = points.reduce((t, p) => t + p.value, 0);
   return (
@@ -14,7 +14,7 @@ export function DayBars({ title, points, unit }: { title: string; points: { day:
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-medium">{title}</span>
         <span className="text-[0.85rem] text-ink-soft tabular-nums">
-          peak {n(max)} · {n(total)} in 30 days
+          {summary ?? `peak ${n(max)} · ${n(total)} in ${points.length} days`}
         </span>
       </figcaption>
       <div aria-hidden="true" className="relative h-36 border-b border-line">

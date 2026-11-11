@@ -3,16 +3,21 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireAdmin } from "@/lib/admin";
 import { cn } from "@/lib/utils";
+import type { SearchParams } from "@/modules/admin/components/ui";
+import { filterLabel, parseFilter } from "@/modules/admin/learner-filter";
+import { countLearners, courseTitle } from "@/modules/admin/queries";
 import AnnouncementForm from "./components/announcement-form";
-import { audienceSizes, listAnnouncements } from "./queries";
+import { listAnnouncements } from "./queries";
 
 export const card = "flex flex-col gap-4 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)]";
-export const AUDIENCE_LABEL = { all: "Everyone", free: "No paid plan", paid: "Paying learners", admins: "Admins only" } as const;
 const date = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-async function NewForm() {
+// Opened from Learners ("Message these"), the filter comes along in the URL.
+async function NewForm({ searchParams }: { searchParams: SearchParams }) {
   await requireAdmin();
-  return <AnnouncementForm id={null} sizes={await audienceSizes()} />;
+  const filter = parseFilter(await searchParams);
+  const [reach, title] = await Promise.all([countLearners(filter), courseTitle(filter.course)]);
+  return <AnnouncementForm key={JSON.stringify(filter)} id={null} filter={filter} reach={reach} courseTitle={title} />;
 }
 
 async function List() {
@@ -25,7 +30,7 @@ async function List() {
         <li key={a.id}>
           <Link href={`/admin/announcements/${a.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[14px] bg-paper px-3.5 py-2.5 hover:bg-lime-soft/40">
             <span className="min-w-0 flex-1 truncate font-medium">{a.subject}</span>
-            <span className="text-[0.85rem] text-ink-soft">{AUDIENCE_LABEL[a.audience]}</span>
+            <span className="max-w-[45%] truncate text-[0.85rem] text-ink-soft">{filterLabel(a.filter)}</span>
             <span
               className={cn(
                 "rounded-full px-2.5 py-0.5 text-[0.75rem] font-medium",
@@ -42,8 +47,8 @@ async function List() {
   );
 }
 
-// Admin → Announcements: write once, send to everyone (or Free, or paid) by Inbox and email.
-export default function AnnouncementsPage() {
+// Admin → Announcements: write once, send to any group of learners (a filter) by Inbox and email.
+export default function AnnouncementsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <section aria-labelledby="new-title" className={card}>
@@ -51,7 +56,7 @@ export default function AnnouncementsPage() {
           New announcement
         </h2>
         <Suspense fallback={<Skeleton className="h-[520px] rounded-card" />}>
-          <NewForm />
+          <NewForm searchParams={searchParams} />
         </Suspense>
       </section>
       <section aria-labelledby="past-title" className={cn(card, "self-start")}>

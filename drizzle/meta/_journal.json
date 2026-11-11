@@ -197,6 +197,13 @@
       "when": 1794252756259,
       "tag": "0027_silent_sir_ram",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794375685014,
+      "tag": "0028_announcement_filter",
+      "breakpoints": true
     }
   ]
 }

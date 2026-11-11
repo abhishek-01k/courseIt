@@ -16,3 +16,9 @@ export async function requireAdmin() {
   if (!session?.user?.id || !isAdmin(session.user.email)) notFound();
   return session.user.id;
 }
+
+/** For admin route handlers (CSV exports, images): true only for a signed-in admin. */
+export async function isAdminRequest() {
+  const session = await auth();
+  return Boolean(session?.user?.id && isAdmin(session.user.email));
+}

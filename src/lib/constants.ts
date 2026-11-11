@@ -71,6 +71,7 @@ export const SOCIAL_LINKS = [
   { label: "LinkedIn", href: "https://www.linkedin.com/in/abhishek-01k/" },
   { label: "X", href: "https://x.com/abhish_3k" },
   { label: "Instagram", href: "https://www.instagram.com/why_singh_why/" },
+  { label: "Discord", href: "https://discord.gg/kYmdyTfPd" },
 ] as const;
 
 export const NAV_LINKS: NavLink[] = [

@@ -1,4 +1,5 @@
 import { relations, sql } from "drizzle-orm";
+import type { LearnerFilter } from "@/modules/admin/learner-filter";
 import { boolean, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { Chapter } from "@/types/youtube";
@@ -397,7 +398,10 @@ export const announcements = pgTable("announcement", {
   body: text("body").notNull(), // plain text; a blank line starts a new paragraph
   ctaLabel: text("cta_label"),
   ctaHref: text("cta_href"), // a path in the app ("/plans") or a full URL
-  audience: text("audience").$type<"all" | "free" | "paid" | "admins">().notNull().default("all"), // admins: a dry run to ourselves
+  // Who gets it: any learner filter (src/modules/admin/learner-filter.ts), frozen when it's sent.
+  filter: jsonb("filter").$type<LearnerFilter>().notNull().default({}),
+  // Before filters: one of a fixed list. Migration 0028 copied it into `filter`; no longer read.
+  audience: text("audience").$type<"all" | "free" | "paid" | "admins">().notNull().default("all"),
   status: text("status").$type<"draft" | "sending" | "sent">().notNull().default("draft"),
   recipients: integer("recipients"), // how many it went to, once sent
   createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),

@@ -2,9 +2,9 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { FOOTER_COLUMNS, LEGAL, SOCIAL_LINKS } from "@/lib/constants";
 import { LogoMark } from "./Logo";
-import { InstagramIcon, LinkedinIcon, XIcon, YoutubeIcon } from "../icons";
+import { DiscordIcon, InstagramIcon, LinkedinIcon, XIcon, YoutubeIcon } from "../icons";
 
-const ICONS = { Instagram: InstagramIcon, YouTube: YoutubeIcon, LinkedIn: LinkedinIcon, X: XIcon };
+const ICONS = { Instagram: InstagramIcon, YouTube: YoutubeIcon, LinkedIn: LinkedinIcon, X: XIcon, Discord: DiscordIcon };
 
 // Lime band with ink text in both themes (logo rules: ink on lime).
 export default function Footer() {

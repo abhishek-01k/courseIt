@@ -6,10 +6,12 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { announcementEmail } from "@/emails/templates";
 import { requireAdmin } from "@/lib/admin";
-import { AUDIENCE_LABEL, card } from "./announcements-page";
+import { filterLabel } from "@/modules/admin/learner-filter";
+import { countLearners, courseTitle } from "@/modules/admin/queries";
+import { card } from "./announcements-page";
 import AnnouncementForm from "./components/announcement-form";
 import SendPanel from "./components/send-panel";
-import { announcementStats, audienceSizes, getAnnouncement } from "./queries";
+import { announcementStats, getAnnouncement } from "./queries";
 
 const Stat = ({ label, value }: { label: string; value: number | string }) => (
   <div className="flex flex-col rounded-[14px] bg-paper px-4 py-3">
@@ -26,8 +28,8 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
   // The real email, as a learner would see it (unsubscribe link disabled in the preview).
   const html = await render(announcementEmail(a, "Learner", "#").body);
   const draft = a.status === "draft";
-  const [sizes, stats] = await Promise.all([audienceSizes(), draft ? null : announcementStats(id)]);
-  const reach = sizes[a.audience];
+  const [reach, title, stats] = await Promise.all([countLearners(a.filter), courseTitle(a.filter.course), draft ? null : announcementStats(id)]);
+  const who = filterLabel(a.filter, title);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -37,21 +39,21 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
             <section className={card}>
               <h2 className="text-h3 font-medium">Send</h2>
               <p className="text-[0.92rem] text-ink-soft">
-                To <strong className="font-medium text-ink">{AUDIENCE_LABEL[a.audience]}</strong>: {reach.people.toLocaleString("en")} {reach.people === 1 ? "person" : "people"} in their Inbox,{" "}
-                {reach.emails.toLocaleString("en")} by email.
+                To <strong className="font-medium text-ink">{who}</strong>: {reach.people.toLocaleString("en")} {reach.people === 1 ? "person" : "people"} in their Inbox,{" "}
+                {reach.emails.toLocaleString("en")} by email. The list is fixed when you press send.
               </p>
               <SendPanel id={a.id} people={reach.people} emails={reach.emails} />
             </section>
             <section className={card}>
               <h2 className="text-h3 font-medium">Edit</h2>
-              <AnnouncementForm id={a.id} initial={a} sizes={sizes} />
+              <AnnouncementForm id={a.id} initial={a} filter={a.filter} reach={reach} courseTitle={title} />
             </section>
           </>
         ) : (
           <section className={card}>
             <h2 className="text-h3 font-medium">{a.status === "sending" ? "Sending…" : "Sent"}</h2>
             <p className="text-[0.92rem] text-ink-soft">
-              To {AUDIENCE_LABEL[a.audience]}
+              To {who}
               {a.sentAt && ` on ${a.sentAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`}. Delivery numbers fill in as Resend reports them.
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

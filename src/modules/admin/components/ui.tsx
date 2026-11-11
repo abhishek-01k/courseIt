@@ -49,7 +49,22 @@ export function Section({ title, count, children, className }: { title: string; 
   );
 }
 
-export type Tile = { label: string; value: string | number; note?: string };
+/** change: vs the previous period, as a fraction (0.34 = +34%). null = no previous period to compare with. */
+export type Tile = { label: string; value: string | number; note?: string; change?: number | null };
+
+/** (now - before) / before, or null when there's nothing before to compare with. */
+export const change = (now: number, before: number | null | undefined) => (before ? (now - before) / before : null);
+
+function Change({ v }: { v: number }) {
+  const up = v >= 0;
+  return (
+    <span className={cn("rounded-full px-2 py-0.5 font-mono text-[0.72rem] tabular-nums", up ? "bg-lime-soft text-pill-ink" : "bg-warn-bg text-warn-fg")}>
+      {/* +200% and up reads better as a multiple: 0.34 → "+34%", 4 → "5×" */}
+      {v >= 2 ? `${n(Math.round(1 + v))}×` : `${up ? "+" : "−"}${Math.round(Math.abs(v) * 100)}%`}
+      <span className="sr-only"> vs the previous period</span>
+    </span>
+  );
+}
 
 export function Tiles({ tiles }: { tiles: Tile[] }) {
   return (
@@ -57,7 +72,10 @@ export function Tiles({ tiles }: { tiles: Tile[] }) {
       {tiles.map((t) => (
         <li key={t.label} className="flex flex-col gap-1 rounded-card bg-surface p-5 shadow-[0_0_0_1px_var(--line)]">
           <span className="font-mono text-label tracking-[0.07em] text-ink-soft uppercase">{t.label}</span>
-          <span className="font-display text-[clamp(1.9rem,3.4vw,2.5rem)] leading-none tabular-nums">{typeof t.value === "number" ? n(t.value) : t.value}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-display text-[clamp(1.9rem,3.4vw,2.5rem)] leading-none tabular-nums">{typeof t.value === "number" ? n(t.value) : t.value}</span>
+            {t.change != null && <Change v={t.change} />}
+          </span>
           {t.note && <span className="text-[0.85rem] text-ink-soft tabular-nums">{t.note}</span>}
         </li>
       ))}

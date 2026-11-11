@@ -11,10 +11,16 @@ import { announcementEmail } from "@/emails/templates";
 import { ANNOUNCEMENT_SEND, inngest } from "@/inngest/client";
 import { requireAdmin } from "@/lib/admin";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
+import { parseFilter } from "@/modules/admin/learner-filter";
+import { countLearners } from "@/modules/admin/queries";
 
 export type AnnouncementFormState = { error?: string; ok?: string };
 
-const AUDIENCES = ["all", "free", "paid", "admins"] as const;
+/** Live count for the form: how many learners the filter reaches right now, and how many by email. */
+export async function countAudienceAction(raw: Record<string, unknown>) {
+  await requireAdmin();
+  return countLearners(parseFilter(raw));
+}
 
 /** Save a new announcement, or changes to a draft. Opens it afterwards, where it can be previewed and sent. */
 export async function saveAnnouncementAction(id: string | null, _prev: AnnouncementFormState, form: FormData): Promise<AnnouncementFormState> {
@@ -26,7 +32,7 @@ export async function saveAnnouncementAction(id: string | null, _prev: Announcem
     body: field("body", 5000),
     ctaLabel: field("ctaLabel", 40) || null,
     ctaHref: field("ctaHref", 300) || null,
-    audience: (AUDIENCES as readonly string[]).includes(String(form.get("audience"))) ? (String(form.get("audience")) as (typeof AUDIENCES)[number]) : "all",
+    filter: parseFilter(form),
   };
   if (!values.subject || !values.heading || !values.body) return { error: "Subject, heading and message are all needed." };
   if (Boolean(values.ctaLabel) !== Boolean(values.ctaHref)) return { error: "A button needs both a label and a link (or leave both empty)." };

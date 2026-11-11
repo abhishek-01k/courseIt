@@ -2,6 +2,8 @@ import { asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, courseSteps, courses, enrollments, roadmapFollows, roadmaps, userDays, users } from "@/db/schema";
 import { buildsPaused } from "@/lib/builds-paused";
+import type { LearnerFilter } from "./learner-filter";
+import { daysAgo, emailableSql, learnerWhere, lessonsSql, paidSql, streaks } from "./learner-where";
 import { getCourseProgress } from "@/modules/roadmap/queries";
 
 // Every query here is for /admin only; callers check requireAdmin() first.
@@ -10,31 +12,13 @@ import { getCourseProgress } from "@/modules/roadmap/queries";
 
 export const PAGE_SIZE = 50;
 
-const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10); // YYYY-MM-DD, close enough across zones
-
 /** Raw SQL rows. Every number is cast to ::int or ::float8 in the query, so the driver returns JS numbers. */
-async function rows<T>(query: SQL) {
+export async function rows<T>(query: SQL) {
   const result = await db.execute(query);
   return result.rows as T[];
 }
 
 const like = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-
-/**
- * Each learner's current and best streak, from user_day (a "visit" day in their own timezone).
- * Streaks are islands of consecutive days; one still running ended today or yesterday (UTC, close enough).
- */
-const streaks = (where: SQL = sql`true`) => sql`
-  select user_id, max(len)::int as best, coalesce(max(len) filter (where last >= current_date - 1), 0)::int as current
-  from (
-    select user_id, count(*) as len, max(d) as last
-    from (
-      select user_id, day::date as d, day::date - (row_number() over (partition by user_id order by day))::int as grp
-      from user_day where ${where}
-    ) g
-    group by user_id, grp
-  ) islands
-  group by user_id`;
 
 // --- Overview (/admin)
 
@@ -66,8 +50,9 @@ export async function getAdminOverview() {
         select first as day, count(*)::int as n
         from (select min(day) as first from user_day group by user_id) t
         where first >= ${month} group by first`),
-      rows<{ running: number; avg: number | null; longest: number | null }>(sql`
+      rows<{ running: number; multi: number; avg: number | null; longest: number | null }>(sql`
         select count(*) filter (where current > 0)::int as running,
+               count(*) filter (where current > 1)::int as multi,
                avg(current) filter (where current > 0)::float8 as avg,
                max(best)::int as longest
         from (${streaks()}) s`),
@@ -192,6 +177,9 @@ export type AdminUserRow = {
   email: string | null;
   image: string | null;
   providers: string | null;
+  plan: "free" | "basic" | "pro" | "max";
+  paid: boolean;
+  joined: string;
   firstSeen: string | null;
   lastSeen: string | null;
   days: number;
@@ -205,40 +193,59 @@ export type AdminUserRow = {
   accuracy: number | null;
 };
 
-/** One page of learners with their activity, streaks and learning totals, sorted by any column. */
-export async function getAdminUsers({ q = "", sort = "active", page = 0 }: { q?: string; sort?: UserSort; page?: number }) {
-  const match = q ? sql`(u.name ilike ${like(q)} or u.email ilike ${like(q)})` : sql`true`;
+const u = sql.raw("u");
+
+/** Learners matching the filter, with their activity, streaks and learning totals, sorted by any column. */
+function learnersQuery(filter: LearnerFilter, sort: UserSort, limit: number, offset: number) {
   const column = sql.raw(USER_SORTS[sort] ?? USER_SORTS.active);
-  const [list, [{ total }]] = await Promise.all([
-    rows<AdminUserRow>(sql`
-      with s as (${streaks()}),
-      r as (
-        select u.id, u.name, u.email, u.image,
-               (select string_agg(a.provider, ', ') from account a where a."userId" = u.id) as providers,
-               (select min(d.day) from user_day d where d.user_id = u.id) as first_seen,
-               (select max(d.day) from user_day d where d.user_id = u.id) as last_seen,
-               (select count(*) from user_day d where d.user_id = u.id)::int as days,
-               coalesce(s.current, 0)::int as streak,
-               coalesce(s.best, 0)::int as best,
-               (select count(*) from enrollment e where e.user_id = u.id)::int as enrolled,
-               (select count(*) from course c where c.created_by = u.id)::int as built,
-               (select count(*) from (
-                  select w.lesson_id from lesson_watch w where w.user_id = u.id and w.watched_at is not null
-                  union select p.lesson_id from lesson_progress p where p.user_id = u.id) x)::int as lessons,
-               (select coalesce(sum(w.watched_seconds), 0) from lesson_watch w where w.user_id = u.id)::float8 as watched,
-               (select count(*) from attempt t where t.user_id = u.id)::int as answers,
-               (select count(*) from attempt t where t.user_id = u.id and t.correct)::int as correct
-        from "user" u left join s on s.user_id = u.id
-        where ${match}
-      )
-      select id, name, email, image, providers, first_seen as "firstSeen", last_seen as "lastSeen", days, streak, best,
-             enrolled, built, lessons, watched, answers, accuracy
-      from (select *, case when answers > 0 then correct::float8 / answers end as accuracy from r) r
-      order by ${column} desc nulls last, name asc nulls last, id
-      limit ${PAGE_SIZE} offset ${page * PAGE_SIZE}`),
-    rows<{ total: number }>(sql`select count(*)::int as total from "user" u where ${match}`),
-  ]);
-  return { list, total };
+  return rows<AdminUserRow>(sql`
+    with s as (${streaks()}),
+    r as (
+      select u.id, u.name, u.email, u.image, u.plan, ${paidSql(u)} as paid, to_char(u.created_at, 'YYYY-MM-DD') as joined,
+             (select string_agg(a.provider, ', ') from account a where a."userId" = u.id) as providers,
+             (select min(d.day) from user_day d where d.user_id = u.id) as first_seen,
+             (select max(d.day) from user_day d where d.user_id = u.id) as last_seen,
+             (select count(*) from user_day d where d.user_id = u.id)::int as days,
+             coalesce(s.current, 0)::int as streak,
+             coalesce(s.best, 0)::int as best,
+             (select count(*) from enrollment e where e.user_id = u.id)::int as enrolled,
+             (select count(*) from course c where c.created_by = u.id)::int as built,
+             ${lessonsSql(u)}::int as lessons,
+             (select coalesce(sum(w.watched_seconds), 0) from lesson_watch w where w.user_id = u.id)::float8 as watched,
+             (select count(*) from attempt t where t.user_id = u.id)::int as answers,
+             (select count(*) from attempt t where t.user_id = u.id and t.correct)::int as correct
+      from "user" u left join s on s.user_id = u.id
+      where ${learnerWhere(filter, u)}
+    )
+    select id, name, email, image, providers, plan, paid, joined, first_seen as "firstSeen", last_seen as "lastSeen", days, streak, best,
+           enrolled, built, lessons, watched, answers, accuracy
+    from (select *, case when answers > 0 then correct::float8 / answers end as accuracy from r) r
+    order by ${column} desc nulls last, name asc nulls last, id
+    limit ${limit} offset ${offset}`);
+}
+
+/** How many learners match, and how many of them can be emailed. */
+export async function countLearners(filter: LearnerFilter) {
+  const [r] = await rows<{ people: number; emails: number }>(sql`
+    select count(*)::int as people, count(*) filter (where ${emailableSql(u)})::int as emails
+    from "user" u where ${learnerWhere(filter, u)}`);
+  return r;
+}
+
+/** One page of learners for /admin/users. */
+export async function getAdminUsers({ filter = {}, sort = "active", page = 0 }: { filter?: LearnerFilter; sort?: UserSort; page?: number }) {
+  const [list, { people, emails }] = await Promise.all([learnersQuery(filter, sort, PAGE_SIZE, page * PAGE_SIZE), countLearners(filter)]);
+  return { list, total: people, emails };
+}
+
+/** Every matching learner, for the CSV export (capped well above today's numbers). */
+export const exportAdminUsers = (filter: LearnerFilter, sort: UserSort) => learnersQuery(filter, sort, 50_000, 0);
+
+/** A course's title, to show "taking <course>" for a course filter. */
+export async function courseTitle(id: string | undefined) {
+  if (!id) return null;
+  const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, id));
+  return c?.title ?? null;
 }
 
 // --- One learner (/admin/users/[id])

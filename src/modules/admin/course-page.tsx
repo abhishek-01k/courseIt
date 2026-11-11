@@ -123,6 +123,16 @@ async function Course({ params }: { params: Promise<{ id: string }> }) {
           <p className="text-ink-soft">Nobody is taking this course yet.</p>
         )}
         {c.learners > c.people.length && <p className="text-[0.8rem] text-ink-soft">Showing the 100 who opened it most recently.</p>}
+        {c.learners > 0 && (
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-[0.9rem]">
+            <Link href={`/admin/users?course=${id}`} className="font-medium text-moss hover:underline">
+              Filter, sort or export these learners →
+            </Link>
+            <Link href={`/admin/announcements?course=${id}`} className="font-medium text-moss hover:underline">
+              Message them →
+            </Link>
+          </p>
+        )}
       </Section>
 
       <Section title="Build log" count={c.steps.length}>

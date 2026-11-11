@@ -33,7 +33,12 @@ async function Overview() {
           ]}
         />
         <div className="grid gap-6 pt-2 md:grid-cols-2">
-          <DayBars title="Active learners per day" unit="active" points={o.series.map((p) => ({ day: p.day, value: p.active }))} />
+          <DayBars
+            title="Active learners per day"
+            unit="active"
+            points={o.series.map((p) => ({ day: p.day, value: p.active }))}
+            summary={`peak ${n(Math.max(0, ...o.series.map((p) => p.active)))} · ${n(Math.round(o.series.reduce((t, p) => t + p.active, 0) / o.series.length))} a day on average`}
+          />
           <DayBars title="New learners per day" unit="new" points={o.series.map((p) => ({ day: p.day, value: p.signups }))} />
         </div>
         <p className="text-[0.8rem] text-ink-soft">Days are UTC. A learner counts as new on the first day they opened CourseIt.</p>
@@ -43,7 +48,7 @@ async function Overview() {
         <Section title="Streaks">
           <Tiles
             tiles={[
-              { label: "Running", value: s.running, note: "learners with a streak today" },
+              { label: "Running", value: s.running, note: `came today or yesterday · ${n(s.multi)} on 2+ days in a row` },
               { label: "Average", value: s.avg ? `${s.avg.toFixed(1)}d` : "—", note: "of the running ones" },
               { label: "Longest ever", value: s.longest ? `${s.longest}d` : "—" },
             ]}

@@ -1,31 +1,16 @@
 import { render } from "@react-email/components";
-import { and, eq, gt, inArray, isNull, ne, or, type SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { Resend } from "resend";
 import { db } from "@/db";
 import { announcements, emailLog, notifications, users } from "@/db/schema";
 import { announcementEmail } from "@/emails/templates";
-import { admins } from "@/lib/admin";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
+import { learnerWhere } from "@/modules/admin/learner-where";
 import { ANNOUNCEMENT_SEND, inngest } from "./client";
 
 const BATCH = 100; // Resend's batch API takes up to 100 emails per call
 
-// Same rule as hasPaidAccess in src/lib/billing.ts, as SQL: on Pro or Max, or cancelled but still in the paid period.
-const paid = and(
-  ne(users.plan, "free"),
-  or(inArray(users.planStatus, ["active", "past_due"]), and(eq(users.planStatus, "cancelled"), gt(users.planRenewsAt, sql`now()`))),
-) as SQL;
-
-export const audienceWhere = (audience: "all" | "free" | "paid" | "admins"): SQL | undefined =>
-  audience === "paid"
-    ? paid
-    : audience === "free"
-      ? sql`not (${paid})`
-      : audience === "admins"
-        ? inArray(sql`lower(${users.email})`, admins().length ? admins() : [""])
-        : undefined;
-
-// Admin → Announcements → Send. Everyone in the audience gets it in their Inbox; those with an email address that
+// Admin → Announcements → Send. Everyone matching its filter gets it in their Inbox; those with an email address that
 // hasn't bounced and who haven't unsubscribed also get it by email, 100 per Resend call. Each batch is its own step
 // with its own idempotency key, so a retry or a crash halfway never sends anyone a second copy.
 export const sendAnnouncement = inngest.createFunction(
@@ -34,9 +19,10 @@ export const sendAnnouncement = inngest.createFunction(
     const { announcementId } = event.data as { announcementId: string };
 
     const recipients = await step.run("recipients", async () => {
-      const [a] = await db.select({ audience: announcements.audience, status: announcements.status }).from(announcements).where(eq(announcements.id, announcementId));
+      const [a] = await db.select({ filter: announcements.filter, status: announcements.status }).from(announcements).where(eq(announcements.id, announcementId));
       if (!a || a.status === "sent") return [];
-      const rows = await db.select({ id: users.id }).from(users).where(audienceWhere(a.audience));
+      // The list is fixed here, once: learners who join or change plan while it sends don't shift the batches.
+      const rows = await db.select({ id: users.id }).from(users).where(learnerWhere(a.filter));
       await db.update(announcements).set({ status: "sending", recipients: rows.length }).where(eq(announcements.id, announcementId));
       return rows.map((r) => r.id);
     });

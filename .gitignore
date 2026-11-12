@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# creator outreach lists and send log (personal data, never commit)
+/outreach/

@@ -11,7 +11,8 @@ import type { Testimonial } from "@/types/testimonials";
 // PLACEHOLDERS: fill these in before launch. They appear on the Privacy and Terms pages.
 export const LEGAL = {
   operator: "Triggerfy Services",
-  parent: { name: "Triggerfy", url: "https://triggerfy.xyz" }, // CourseIt is a Triggerfy product
+  // CourseIt is a Triggerfy product. Public LinkedIn company page (not the /admin/ URL, which visitors can't open).
+  parent: { name: "Triggerfy", url: "https://www.linkedin.com/company/144026090/" },
   contactEmail: "hello@triggerfy.xyz",
   jurisdiction: "India",
   lastUpdated: "November 4, 2026",

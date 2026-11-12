@@ -4,6 +4,7 @@ import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 import CtaButtons from "./cta-buttons";
 import Pill from "@/components/pill";
 import { NvidiaIcon } from "@/components/icons";
+import { LEGAL } from "@/lib/constants";
 
 export default function Hero() {
   return (
@@ -39,6 +40,21 @@ export default function Hero() {
 
         <RevealItem className="mt-1.5">
           <CtaButtons />
+        </RevealItem>
+
+        <RevealItem>
+          <p className="font-mono text-label tracking-[0.2em] text-ink-soft uppercase">
+            A{" "}
+            <a
+              href={LEGAL.parent.url}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-ink underline underline-offset-4 hover:text-moss"
+            >
+              {LEGAL.operator}
+            </a>{" "}
+            product
+          </p>
         </RevealItem>
       </RevealGroup>
     </section>

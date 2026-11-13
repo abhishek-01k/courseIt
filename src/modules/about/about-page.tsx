@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { LEGAL, SOCIAL_LINKS } from "@/lib/constants";
+import NvidiaInceptionBadge from "@/components/nvidia-inception-badge";
+import { LEGAL, NVIDIA_INCEPTION, SOCIAL_LINKS } from "@/lib/constants";
 import { LegalSection } from "@/modules/legal/components/legal-document";
 
 export default function AboutPage() {
@@ -25,6 +26,11 @@ export default function AboutPage() {
             Paste a video or playlist. NVIDIA Nemotron models on Nebius Token Factory read the transcript, split it into lessons, and write study notes,
             quizzes and a placement test for each course. Videos play in YouTube&apos;s own player, so creators keep their views.
           </p>
+          <p>
+            CourseIt is a member of the <a href={NVIDIA_INCEPTION.url} target="_blank" rel="noreferrer">NVIDIA Inception program</a>, NVIDIA&apos;s
+            program for startups building with AI and accelerated computing.
+          </p>
+          <NvidiaInceptionBadge height={56} className="mt-1 self-start" />
         </LegalSection>
         <LegalSection title="Who's building it">
           <p>

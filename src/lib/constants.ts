@@ -18,6 +18,15 @@ export const LEGAL = {
   lastUpdated: "November 4, 2026",
 };
 
+// NVIDIA's rules (design.nvidia.com/partners/inception): write "the NVIDIA Inception program" in sentences ("Program" only in
+// titles), never just "Inception". The legal line is required wherever the NVIDIA name or logo appears; list every NVIDIA
+// trademark the site mentions, alphabetically.
+export const NVIDIA_INCEPTION = {
+  url: "https://www.nvidia.com/en-us/startups/",
+  legal:
+    "© 2026 NVIDIA, the NVIDIA logo, and Nemotron are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.",
+};
+
 export const LEGAL_LINKS: NavLink[] = [
   { id: 1, title: "Privacy", href: "/privacy" },
   { id: 2, title: "Terms", href: "/terms" },

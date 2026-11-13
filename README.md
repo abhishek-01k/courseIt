@@ -1,5 +1,17 @@
 # CourseIt
 
+<!-- NVIDIA Inception Program badge: official artwork from design.nvidia.com (unchanged). NVIDIA's rules: don't recolor, stretch or
+     edit it, keep clear space around it, and never show it bigger than the CourseIt logo next to it. -->
+<p>
+  <a href="https://courseit.xyz"><img src="public/brand/logo-120.png" alt="CourseIt logo" height="80"></a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="#nvidia-inception-program"><img src="docs/brand/nvidia-inception-badge.svg" alt="NVIDIA Inception Program member badge" height="48"></a>
+</p>
+
+[![Built with NVIDIA Nemotron](https://img.shields.io/badge/Built%20with-NVIDIA%20Nemotron-76B900?style=for-the-badge)](#how-nemotron-and-nebius-token-factory-power-it)
+[![Live at courseit.xyz](https://img.shields.io/badge/Live-courseit.xyz-0f1611?style=for-the-badge)](https://courseit.xyz)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+
 **Turn any YouTube video or playlist into a course you actually finish.**
 
 Paste a link. NVIDIA Nemotron models on Nebius Token Factory read the video's own captions, split it into lessons, write study notes and quizzes for each one, build a placement test that skips what you already know, and pack it all into a daily plan that fits your time. You watch in YouTube's own player, so creators keep their views.
@@ -7,6 +19,10 @@ Paste a link. NVIDIA Nemotron models on Nebius Token Factory read the video's ow
 ---
 
 ## Updates
+
+### November 2026: CourseIt joins NVIDIA Inception
+
+CourseIt is now a member of the [NVIDIA Inception program](https://www.nvidia.com/en-us/startups/), NVIDIA's program for startups building with AI and accelerated computing. See [NVIDIA Inception Program](#nvidia-inception-program) below.
 
 ### 10 November 2026: 2,804 learners, 412 courses
 
@@ -58,6 +74,7 @@ The first spike (3–4 November) came from a [reel on Abhishek's Instagram](http
 | **Live** | https://courseit.xyz (sign in with Google, GitHub or X) |
 | **Demo video** | https://youtu.be/dm69e4neiP0 (under 3 minutes) |
 | **Hackathon** | [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/), **Best Apps and Agents** track |
+| **Program** | Member of the [NVIDIA Inception program](https://www.nvidia.com/en-us/startups/) |
 | **Built with** | NVIDIA Nemotron 3 Ultra, Nemotron 3.5 Super and Nemotron 3.5 Lightning on **Nebius Token Factory**, plus Tavily |
 | **License** | [MIT](LICENSE) |
 
@@ -199,6 +216,16 @@ One API key and one OpenAI-compatible endpoint gave access to every Nemotron siz
 
 ---
 
+## NVIDIA Inception Program
+
+<p><img src="docs/brand/nvidia-inception-badge.svg" alt="NVIDIA Inception Program member badge" height="64"></p>
+
+CourseIt is a member of the [NVIDIA Inception program](https://www.nvidia.com/en-us/startups/), NVIDIA's free program for startups building with AI and accelerated computing. Every course CourseIt builds is planned and written by NVIDIA Nemotron models, so the program is a natural fit for where the product is going.
+
+#NVIDIAInception
+
+---
+
 ## Tech stack
 
 - **Next.js 16** (App Router, Cache Components, partial prerendering, server actions), **React 19**, **TypeScript**
@@ -316,5 +343,7 @@ CourseIt was started from scratch for this hackathon: the first commit is from 2
 ## License and credits
 
 [MIT](LICENSE) © 2026 Triggerfy Services. CourseIt is a product of [Triggerfy](https://triggerfy.xyz).
+
+© 2026 NVIDIA, the NVIDIA logo, and Nemotron are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.
 
 Videos play in YouTube's own player and belong to their creators; CourseIt never downloads them. Made by [Abhishek Kumar](https://www.linkedin.com/in/abhishek-01k/) · [X](https://x.com/abhish_3k).

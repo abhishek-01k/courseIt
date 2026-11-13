@@ -4,8 +4,7 @@ import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 import CtaButtons from "./cta-buttons";
 import Pill from "@/components/pill";
 import { NvidiaIcon } from "@/components/icons";
-import { LEGAL } from "@/lib/constants";
-
+import { LEGAL, NVIDIA_INCEPTION } from "@/lib/constants";
 export default function Hero() {
   return (
     <section aria-label="Intro" className="relative h-[980px] overflow-hidden">
@@ -22,10 +21,13 @@ export default function Hero() {
 
       <RevealGroup stagger={0.12} className="relative z-10 mx-auto flex max-w-[980px] flex-col items-center gap-[22px] px-6 pt-[178px] text-center">
         <RevealItem>
-          <Pill>
-           <NvidiaIcon/>
-            Powered by NVIDIA Nemotron
-          </Pill>
+          {/* NVIDIA's approved wording: "NVIDIA Inception program member", never "partner" or "backed by". */}
+          <a href={NVIDIA_INCEPTION.url} target="_blank" rel="noreferrer" className="transition-opacity hover:opacity-80">
+            <Pill>
+              <NvidiaIcon />
+              NVIDIA Inception program member
+            </Pill>
+          </a>
         </RevealItem>
 
         <RevealItem>

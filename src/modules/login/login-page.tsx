@@ -3,6 +3,7 @@ import Link from "next/link";
 import Landscape from "@/components/landscape";
 import { Reveal } from "@/components/motion/reveal";
 import Pill from "@/components/pill";
+import NvidiaInceptionBadge from "@/components/nvidia-inception-badge";
 import AuthError from "./components/auth-error";
 import ProviderButtons from "./components/provider-buttons";
 import ProviderButtonsNext from "./components/provider-buttons-next";
@@ -41,6 +42,7 @@ export default function LoginPage() {
           </Link>
           .
         </p>
+        <NvidiaInceptionBadge height={36} className="[@media(max-height:640px)]:hidden" />
       </Reveal>
     </section>
   );

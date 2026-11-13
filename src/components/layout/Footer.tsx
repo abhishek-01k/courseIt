@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { FOOTER_COLUMNS, LEGAL, SOCIAL_LINKS } from "@/lib/constants";
+import { FOOTER_COLUMNS, LEGAL, NVIDIA_INCEPTION, SOCIAL_LINKS } from "@/lib/constants";
+import NvidiaInceptionBadge from "../nvidia-inception-badge";
 import { LogoMark } from "./Logo";
 import { DiscordIcon, InstagramIcon, LinkedinIcon, XIcon, YoutubeIcon } from "../icons";
 
@@ -44,6 +45,8 @@ export default function Footer() {
                 );
               })}
             </div>
+            {/* Same height as the CourseIt logo above and narrower, per NVIDIA's "never bigger than your logo" rule. */}
+            <NvidiaInceptionBadge height={40} className="mt-6" />
           </div>
 
           <nav aria-label="Footer" className="grid grid-cols-2 gap-10 sm:grid-cols-3">
@@ -73,6 +76,7 @@ export default function Footer() {
             product. Made for people who finish what they start.
           </span>
           <span>Videos play in YouTube&apos;s own player. Creators keep their views.</span>
+          <span className="w-full text-xs text-[#0f1611]/60">{NVIDIA_INCEPTION.legal}</span>
         </div>
       </div>
     </footer>

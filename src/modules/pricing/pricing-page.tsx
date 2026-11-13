@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Pill from "@/components/pill";
+import NvidiaInceptionBadge from "@/components/nvidia-inception-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { paymentsLive } from "@/lib/billing";
 import { currentRegion } from "@/lib/region";
@@ -24,6 +25,10 @@ export default function PricingPage() {
       <Suspense fallback={<Skeleton className="mt-10 h-[600px] w-full rounded-card" />}>
         <RegionalPlanCards />
       </Suspense>
+      <div className="mt-12 flex flex-col items-center gap-3 text-center text-[0.95rem] text-ink-soft sm:flex-row sm:gap-5 sm:text-left">
+        <NvidiaInceptionBadge height={44} />
+        <p className="max-w-[420px]">CourseIt is a member of the NVIDIA Inception program. Every course is built with NVIDIA Nemotron models.</p>
+      </div>
       <section aria-labelledby="faq-title" className="mt-20 flex w-full max-w-[760px] flex-col gap-6">
         <h2 id="faq-title" className="text-h3 font-medium">
           Questions

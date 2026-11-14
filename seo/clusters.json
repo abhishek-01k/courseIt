@@ -1,0 +1,38 @@
+{
+  "_about": "Query clusters for `node seo/scripts/gsc.mjs clusters`. First match wins, so order is priority. Patterns are case-insensitive regexes. Tune these once real query data is in: they are a first guess, not findings.",
+  "clusters": [
+    {
+      "name": "brand",
+      "why": "Can people find us by name? Includes likely misspellings.",
+      "patterns": ["course ?it\\b", "courseit", "cours ?it\\b", "corse ?it", "coursit", "courset\\b"]
+    },
+    {
+      "name": "tool (buyer)",
+      "why": "Looking for what CourseIt does. The highest-intent cluster.",
+      "patterns": [
+        "(youtube|yt).*(to|into|as) (a )?(course|lesson|study)",
+        "(playlist|video).*(to|into) (a )?(course|notes|quiz|study plan)",
+        "(youtube|yt|playlist).*(course|notes|quiz|summary|study plan) (maker|generator|creator|builder|ai|tool|app)",
+        "(ai|tool|app).*(course|notes|quiz).*(youtube|playlist)",
+        "youtube.*(learning|study) (app|tool|platform)"
+      ]
+    },
+    {
+      "name": "learner problem (buyer)",
+      "why": "Has the problem CourseIt solves. Answer-first guides target this.",
+      "patterns": [
+        "(finish|complete|stick (to|with)|focus on).*(youtube|playlist|online course|tutorial)",
+        "(learn|study).*(from|on|with) youtube",
+        "study (plan|schedule|timetable)",
+        "watch later",
+        "(youtube|tutorial).*(distract|procrastinat|hell)",
+        "self.?(study|taught|learning)"
+      ]
+    },
+    {
+      "name": "course topic",
+      "why": "Searching for a subject; lands on public course pages. Big but lower intent.",
+      "patterns": ["course", "tutorial", "lecture", "playlist", "notes", "class \\d+", "for beginners", "full stack|python|javascript|machine learning|dsa|sql|react"]
+    }
+  ]
+}

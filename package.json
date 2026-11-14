@@ -10,7 +10,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "inngest:dev": "npx --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3000/api/inngest"
+    "inngest:dev": "npx --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3000/api/inngest",
+    "seo:gsc": "node seo/scripts/gsc.mjs",
+    "seo:indexnow": "node seo/scripts/indexnow.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",

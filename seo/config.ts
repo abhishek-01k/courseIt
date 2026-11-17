@@ -15,11 +15,17 @@ export const STATIC_PAGES: { path: string; priority: number; changeFrequency: "d
 ];
 
 /**
- * How many public course pages go in the sitemap: the most-joined ready, public courses.
+ * How many public course pages go in the sitemap: ready, public courses, English first (the US push), then most-joined.
  * Playbook rule: ship a page type in batches of 5 and scale only once URL Inspection shows the batch is indexed.
  * Raise this in steps (5 → 10 → 25 → 50 …) and log each step in seo/LANE.md.
  */
 export const COURSE_SITEMAP_LIMIT = 5;
 
-/** Paths crawlers should skip: signed-in app screens, admin, API, build progress, maintenance. */
-export const DISALLOWED_PATHS = ["/api/", "/admin", "/build/", "/dashboard", "/settings", "/inbox", "/notes", "/new", "/plans", "/support", "/login", "/maintenance"];
+/** More specific than the disallow below, so it wins: link-preview images of a course must stay fetchable. */
+export const ALLOWED_PATHS = ["/courses/*/opengraph-image"];
+
+/**
+ * Paths crawlers should skip: signed-in app screens, admin, API, build progress, maintenance, and lesson pages
+ * (/courses/<slug>/<n>), which send signed-out visitors to sign-in. The course page itself stays crawlable.
+ */
+export const DISALLOWED_PATHS = ["/courses/*/", "/api/", "/admin", "/build/", "/dashboard", "/settings", "/inbox", "/notes", "/new", "/plans", "/support", "/login", "/maintenance"];

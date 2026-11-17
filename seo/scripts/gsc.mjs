@@ -13,7 +13,7 @@
 //   node seo/scripts/gsc.mjs inspect <url> [<url> ...]  URL Inspection: indexed or not, and why
 //   node seo/scripts/gsc.mjs inspect-sitemap            inspect every URL in the live sitemap
 //   node seo/scripts/gsc.mjs sitemaps [--submit]        list sitemaps (or submit /sitemap.xml)
-// Add --json to any command for raw output.
+// Add --json to any command for raw output, and --country usa (ISO 3166 alpha-3) to see one country only.
 
 import { createSign } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
@@ -98,7 +98,14 @@ async function query({ days = 28, offset = 0, dimensions = ["query"], rowLimit =
   const [startDate, endDate] = window(days, offset);
   const out = await api(`https://www.googleapis.com/webmasters/v3/sites/${siteParam()}/searchAnalytics/query`, {
     method: "POST",
-    body: JSON.stringify({ startDate, endDate, dimensions, rowLimit, dataState: "final" }),
+    body: JSON.stringify({
+      startDate,
+      endDate,
+      dimensions,
+      rowLimit,
+      dataState: "final",
+      ...(flags.country && { dimensionFilterGroups: [{ filters: [{ dimension: "country", operator: "equals", expression: String(flags.country).toLowerCase() }] }] }),
+    }),
   });
   let rows = out.rows ?? [];
   const pageIdx = dimensions.indexOf("page");

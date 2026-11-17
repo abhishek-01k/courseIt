@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { cacheLife } from "next/cache";
 import { db } from "@/db";
 import { courses, enrollments } from "@/db/schema";
 import { coursePath } from "@/lib/paths";
 import { COURSE_SITEMAP_LIMIT, SITE_URL, STATIC_PAGES } from "../config";
 
-/** The current batch of course pages: ready, public, most-joined first. */
+/** The current batch of course pages: ready, public, English first (the US push), then most-joined. */
 async function topCourses() {
   "use cache";
   cacheLife("hours");
@@ -17,7 +17,7 @@ async function topCourses() {
     .leftJoin(enrollments, eq(enrollments.courseId, courses.id))
     .where(and(eq(courses.status, "ready"), eq(courses.isPrivate, false)))
     .groupBy(courses.id)
-    .orderBy(desc(count(enrollments.userId)), desc(courses.createdAt))
+    .orderBy(desc(sql`${courses.language} = 'english'`), desc(count(enrollments.userId)), desc(courses.createdAt))
     .limit(COURSE_SITEMAP_LIMIT);
 }
 

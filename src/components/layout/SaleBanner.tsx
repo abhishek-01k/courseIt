@@ -22,9 +22,10 @@ async function Bar({ variant, href }: Props) {
       className="group flex h-9 w-full items-center justify-center gap-2 bg-ink px-3 text-[0.8rem] text-paper sm:px-4 sm:text-[0.85rem]"
     >
       <span className="shrink-0 whitespace-nowrap rounded-full bg-lime px-2 py-0.5 text-[0.75rem] font-semibold text-ink">{SALE.name}</span>
-      {/* Phones get the short version so it fits on one line: "Get up to 40% off". */}
+      {/* Phones get the short version so it fits on one line: "40% off your first month". Say "first month": the
+          discount is one billing cycle, so a bare "40% off" would read as every month. */}
       <span className="truncate font-medium">
-        <span className="hidden sm:inline">Sale is live: </span>Get up to {SALE.percent}% off<span className="hidden sm:inline"> on the plans.</span>
+        {SALE.percent}% off your first month<span className="hidden sm:inline"> of Pro and Max, until {SALE.endsLabel}</span>
       </span>
       <span className="inline-flex shrink-0 items-center gap-1 font-medium text-lime underline-offset-4 group-hover:underline">
         See plans <ArrowRight className="size-3.5" aria-hidden="true" />

@@ -5,6 +5,11 @@ lane's files: it adds a line here instead.
 
 ## Owner (Siddesh)
 
+- [ ] **US seed courses.** Build ~20 public English courses from playlists US learners search (CS50, freeCodeCamp,
+      MIT OCW, Karpathy, 3Blue1Brown…) so US searchers have pages to land on. Costs Nemotron + Supadata credits per
+      build. _Recommendation: yes, start with 10, pick from Google Trends US + the playlists' view counts._
+- [ ] **Check the first 5 course URLs are indexed** (Search Console → URL inspection, or give the agent API access) so the
+      sitemap can grow past 5.
 - [ ] **Search Console API access.** Create a service account, enable the Search Console API, add its email as a user on the
       courseit.xyz property, and put the JSON in `GSC_CREDENTIALS` plus the property in `GSC_PROPERTY` where the agent runs.
       _Recommendation: a domain property (`sc-domain:courseit.xyz`), Full permission so the agent can submit sitemaps._
@@ -23,9 +28,8 @@ lane's files: it adds a line here instead.
 
 - [ ] Add a `/guides` page type rendering answer-first guides from JSON in `seo/content/guides/` (title, description,
       answer, body, sources, updated date). Link `/guides` from the footer. SEO lane writes the content.
+- [x] Course pages: canonical, Course schema, visible summary and outline. _(SEO lane, 17 Nov)_
 - [ ] Organization + WebSite JSON-LD on the home page (name, logo, url, sameAs = the social links in `src/lib/constants.ts`).
-- [ ] Course pages: canonical URL (`alternates.canonical`) and a visible "updated" date; consider `Course` schema matching the
-      visible content.
 - [ ] Ask every new sign-up "How did you find us?" (onboarding, one optional select incl. "Google search" and "ChatGPT /
       AI assistant") so organic sign-ups can be counted.
 

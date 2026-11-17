@@ -22,10 +22,15 @@ If two files disagree, the home in this table wins. Fix the other one.
 
 | URL | Source | Wired up by |
 |---|---|---|
-| `/sitemap.xml` | [`site/sitemap.ts`](site/sitemap.ts): static pages + the current batch of most-joined public courses | `src/app/sitemap.ts` |
-| `/robots.txt` | [`site/robots.ts`](site/robots.ts): app, admin and API paths disallowed; points to the sitemap | `src/app/robots.ts` |
+| `/sitemap.xml` | [`site/sitemap.ts`](site/sitemap.ts): static pages + the current batch of public courses (English first, then most-joined) | `src/app/sitemap.ts` |
+| `/robots.txt` | [`site/robots.ts`](site/robots.ts): app, admin, API and sign-in-walled lesson paths disallowed; points to the sitemap | `src/app/robots.ts` |
 | `/llms.txt` | [`site/llms.ts`](site/llms.ts): plain-markdown summary for AI assistants | `src/app/llms.txt/route.ts` |
 | `/indexnow-key.txt` | [`site/indexnow-key.ts`](site/indexnow-key.ts): serves `INDEXNOW_KEY` (404 until it's set) | `src/app/indexnow-key.txt/route.ts` |
+
+Course pages (`/courses/<slug>`, all public ones) also get an SEO layer from [`course/`](course/): title, description,
+canonical, noindex for failed or unbuilt courses, Course structured data, and a server-rendered summary, full outline and
+creator credit. It's wired in by `src/app/(protected)/(shell)/courses/[slug]/page.tsx` and one line of
+`src/modules/course/course-page.tsx`.
 
 These regenerate on every deploy: Vercel builds on push, so there's no separate build step for SEO.
 

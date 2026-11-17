@@ -16,6 +16,7 @@ import RetryBanner from "./components/retry-banner";
 import { getPlacementResult, getPlacementTest } from "@/modules/placement/queries";
 import { getRoadmapsForCourse } from "@/modules/roadmap/queries";
 import { getCourseBySlug, getCoursePlan, getCourseSteps, isEnrolled, touchEnrollment } from "./queries";
+import CourseSeo from "../../../seo/course/course-seo";
 
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const [{ slug }, session] = await Promise.all([params, auth()]);
@@ -89,6 +90,9 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           </section>
         </>
       )}
+
+      {/* Summary, full outline, creator credit and Course structured data: what search engines read (seo/course). */}
+      <CourseSeo slug={slug} />
     </div>
   );
 }

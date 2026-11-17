@@ -47,6 +47,7 @@ export function createCheckout(input: {
   returnUrl: string;
   cancelUrl: string;
   userId: string;
+  discountCodes?: string[]; // applied for the customer, e.g. the sale's code (SALE in src/lib/plans.ts)
 }) {
   const locked = LOCKED[input.region];
   return dodo<{ session_id: string; checkout_url: string | null }>("/checkouts", {
@@ -57,6 +58,7 @@ export function createCheckout(input: {
       return_url: input.returnUrl,
       cancel_url: input.cancelUrl,
       metadata: { user_id: input.userId },
+      ...(input.discountCodes?.length && { discount_codes: input.discountCodes }),
       ...(locked && { billing_address: { country: locked.country }, billing_currency: locked.currency }),
       feature_flags: { allow_currency_selection: false, ...(locked && { allow_customer_editing_country: false }) },
     },

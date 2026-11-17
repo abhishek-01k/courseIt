@@ -11,7 +11,7 @@ const SAMPLES: { [T in Template]: Parameters<(typeof TEMPLATES)[T]>[0] } = {
   planStarted: { name: "Abhishek", plan: "Pro", hours: 20, maxHours: 10 },
   paymentFailed: { name: "Abhishek", plan: "Pro" },
   planEnding: { name: "Abhishek", plan: "Pro", endsAt: "2026-12-04T00:00:00Z" },
-  renewalReminder: { name: "Abhishek", plan: "Max", renewsAt: "2026-11-11T00:00:00Z", amount: "₹9,999 (incl. GST)" },
+  renewalReminder: { name: "Abhishek", plan: "Max", renewsAt: "2026-11-11T00:00:00Z", amount: "₹8,999 (incl. GST)" },
 };
 
 export async function GET(_request: NextRequest, ctx: RouteContext<"/api/dev/emails/[template]">) {

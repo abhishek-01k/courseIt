@@ -1,14 +1,19 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import Pill from "@/components/pill";
 import NvidiaInceptionBadge from "@/components/nvidia-inception-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { paymentsLive } from "@/lib/billing";
+import { saleLive } from "@/lib/plans";
 import { currentRegion } from "@/lib/region";
 import PlanCards from "./components/plan-cards";
 
-// Prices follow the visitor's country, so this part is read per request.
+// Prices follow the visitor's country, so this part is read per request (which is also what lets it read the clock
+// for the sale).
 async function RegionalPlanCards() {
-  return <PlanCards region={await currentRegion()} live={paymentsLive()} />;
+  const region = await currentRegion();
+  await connection(); // the sale reads the clock, which Next only allows at request time
+  return <PlanCards region={region} live={paymentsLive()} sale={saleLive()} />;
 }
 
 // Public /pricing. Buttons go to /api/billing/checkout, which asks signed-out visitors to sign in first.

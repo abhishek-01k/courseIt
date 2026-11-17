@@ -6,7 +6,7 @@ import { users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { paymentsLive, usageFor } from "@/lib/billing";
 import { createCheckout } from "@/lib/dodo";
-import { type Interval, isUpgrade, PLANS, type PlanId, productIdFor } from "@/lib/plans";
+import { type Interval, isUpgrade, onSale, PLANS, type PlanId, productIdFor, SALE, saleLive } from "@/lib/plans";
 import { currentRegion } from "@/lib/region";
 
 // /api/billing/checkout?plan=pro&interval=month → Dodo's checkout page. Learners already paying change
@@ -34,15 +34,25 @@ export async function GET(request: NextRequest) {
 
   const [user] = await db.select({ email: users.email, name: users.name, dodoCustomerId: users.dodoCustomerId }).from(users).where(eq(users.id, userId));
   const origin = request.nextUrl.origin;
-  let url: string | null;
-  try {
-    ({ checkout_url: url } = await createCheckout({
+  const checkout = (discountCodes?: string[]) =>
+    createCheckout({
       productId,
       region,
       customer: user?.dodoCustomerId ? { customer_id: user.dodoCustomerId } : { email: user?.email ?? "", name: user?.name ?? undefined },
       returnUrl: `${origin}/api/billing/return`,
       cancelUrl: `${origin}/plans`,
       userId,
+      discountCodes,
+    });
+  // The sale's discount is applied for them, so nobody has to type a code. If Dodo refuses the code (missing, expired,
+  // used up), checkout still opens at the usual price, which Dodo shows before anyone pays.
+  const discount = onSale(saleLive(), plan, interval) ? [SALE.code] : undefined;
+  let url: string | null;
+  try {
+    ({ checkout_url: url } = await checkout(discount).catch((error) => {
+      if (!discount) throw error;
+      console.error(`[checkout] ${SALE.code} refused, opening without it`, error);
+      return checkout();
     }));
   } catch (error) {
     console.error(error);

@@ -9,7 +9,8 @@ import "./globals.css";
 const familjenGrotesk = Familjen_Grotesk({
   variable: "--font-familjen",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  // Variable font (400–700). Listing static weights made Google return
+  // /l/font?kit=…&… URLs, which Turbopack's next/font loader can't resolve.
   style: ["normal", "italic"],
 });
 

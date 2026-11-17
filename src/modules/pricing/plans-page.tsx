@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import PageHeader from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/lib/auth";
 import { buildBlock, paymentsLive, shortDate, usageFor } from "@/lib/billing";
-import { formatHours, isUpgrade, noBuilds } from "@/lib/plans";
+import { formatHours, isUpgrade, noBuilds, saleLive } from "@/lib/plans";
 import { currentRegion } from "@/lib/region";
 import { buttonVariants } from "@/components/ui/button";
 import { PLANS } from "@/lib/plans";
@@ -19,7 +20,7 @@ async function Plans({ searchParams }: { searchParams: Search }) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) redirect("/login");
-  const [usage, params, region] = await Promise.all([usageFor(userId), searchParams, currentRegion()]);
+  const [usage, params, region] = await Promise.all([usageFor(userId), searchParams, currentRegion(), connection()]);
   const { plan } = usage;
 
   const blocked = buildBlock(usage);
@@ -83,7 +84,7 @@ async function Plans({ searchParams }: { searchParams: Search }) {
       </p>
       )}
       <div className="-mt-10">
-        <PlanCards region={region} current={plan.id} live={paymentsLive()} />
+        <PlanCards region={region} current={plan.id} live={paymentsLive()} sale={saleLive()} />
       </div>
     </>
   );

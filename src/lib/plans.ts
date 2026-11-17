@@ -2,8 +2,11 @@
 // Settings all follow. Plans are measured in hours of video built into new courses. Joining a course someone already
 // built is free on every plan and never uses hours, because it costs nothing to serve.
 //
-// Hours are sized from measured build costs (about $0.085 of AI, captions and search per hour of video, Nov 2026), so
-// a learner who uses every hour still leaves more than half of the plan's price after tax and fees, in every region.
+// Hours are sized from measured build costs (about $0.094 of AI and captions per hour of video on Pro and Max, $0.059
+// on Basic, Nov 2026, with 59% of hours in Hindi). A learner who uses every hour still leaves a profit after tax, all
+// of Dodo's fees and building, on every plan and region: in India about ₹73 a month on yearly Pro and ₹223 on yearly
+// Max, much more in the US and UK. Yearly is priced to pull people off monthly (US and UK about half price, India
+// about a third off Pro); don't push India's yearly prices lower without rechecking that it still covers a heavy user.
 export type PlanId = "free" | "basic" | "pro" | "max";
 export type Interval = "month" | "year";
 export type Region = "in" | "gb" | "us";
@@ -24,12 +27,14 @@ export type Plan = {
 
 /**
  * India: rupees with GST included (what Indian shoppers expect). UK: pounds with VAT included.
- * Everyone else: US dollars, with any sales tax or VAT added at checkout.
+ * Everyone else: US dollars, with any sales tax or VAT added at checkout. The note leaves out "USD" to keep the line short.
  */
-export const REGIONS: Record<Region, { currency: string; locale: string; taxNote: string }> = {
-  in: { currency: "INR", locale: "en-IN", taxNote: "incl. GST" },
-  gb: { currency: "GBP", locale: "en-GB", taxNote: "incl. VAT" },
-  us: { currency: "USD", locale: "en-US", taxNote: "USD, plus local taxes" },
+// `savings`: how the yearly saving is shown. India's yearly discounts differ by plan (33% on Pro, 25% on Max), so
+// the amount saved reads better there than a percentage that makes Max look like the worse deal.
+export const REGIONS: Record<Region, { currency: string; locale: string; taxNote: string; savings: "amount" | "percent" }> = {
+  in: { currency: "INR", locale: "en-IN", taxNote: "incl. GST", savings: "amount" },
+  gb: { currency: "GBP", locale: "en-GB", taxNote: "incl. VAT", savings: "percent" },
+  us: { currency: "USD", locale: "en-US", taxNote: "plus local taxes", savings: "percent" },
 };
 
 /** A visitor's country (ISO code, as Vercel sends it) → the prices they see and pay. */
@@ -68,7 +73,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "pro",
     name: "Pro",
     tagline: "For learning every week.",
-    price: { in: { month: 499, year: 4999 }, gb: { month: 15, year: 149 }, us: { month: 19, year: 189 } },
+    price: { in: { month: 499, year: 3999 }, gb: { month: 15, year: 95 }, us: { month: 19, year: 119 } },
     laterPrice: { in: 799, gb: 24, us: 29 },
     hoursPerMonth: 20,
     maxHours: 10,
@@ -78,7 +83,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "max",
     name: "Max",
     tagline: "For whole subjects and bootcamps.",
-    price: { in: { month: 999, year: 9999 }, gb: { month: 39, year: 389 }, us: { month: 49, year: 489 } },
+    price: { in: { month: 999, year: 8999 }, gb: { month: 39, year: 239 }, us: { month: 49, year: 299 } },
     laterPrice: { in: 1599, gb: 59, us: 79 },
     hoursPerMonth: 40,
     maxHours: 20,
@@ -147,6 +152,43 @@ export function formatHours(hours: number) {
 }
 
 export const PAID_PLANS = [PLANS.basic, PLANS.pro, PLANS.max];
+
+/** A yearly price as a monthly amount, rounded up so the page never shows less than is charged (₹3,999 → ₹334, $119 → $9.92). */
+export const perMonth = (yearly: number, region: Region) => (region === "in" ? Math.ceil(yearly / 12) : Math.ceil((yearly / 12) * 100) / 100);
+
+/** What paying yearly saves over twelve monthly payments: the amount, and the percentage rounded down. */
+export function yearlySaving(plan: Plan, region: Region) {
+  const { month, year } = plan.price[region];
+  const amount = Math.round((month * 12 - year) * 100) / 100;
+  return { amount, percent: Math.floor((amount / (month * 12)) * 100) };
+}
+
+/**
+ * Black Friday 2026: 40% off the first month of monthly Pro and Max, in every region; the second month renews at the
+ * usual price. Checkout applies Dodo's discount code `code`, which must exist in Dodo (test and live) as: percentage,
+ * amount 4000 (basis points), subscription_cycles 1, restricted to the six monthly Pro and Max products, with the same
+ * start and end. Yearly is left out: it's already cheaper than the sale price over a year. Set SALE_PREVIEW=1 locally
+ * to see the sale before it starts.
+ */
+export const SALE = {
+  name: "Black Friday",
+  code: "BLACKFRIDAY40",
+  percent: 40,
+  plans: ["pro", "max"] as PlanId[],
+  startsAt: new Date("2026-11-27T00:00:00+05:30"),
+  endsAt: new Date("2026-12-01T00:00:00+05:30"), // through Cyber Monday, 30 Nov
+  endsLabel: "30 Nov",
+};
+
+/** Whether the sale is on right now. Reads the clock, so call it only where the page already renders per request. */
+export const saleLive = (now = new Date()) =>
+  (now >= SALE.startsAt && now < SALE.endsAt) || (process.env.NODE_ENV !== "production" && process.env.SALE_PREVIEW === "1");
+
+/** Whether this plan and billing interval get the sale price. */
+export const onSale = (live: boolean, plan: PlanId, interval: Interval) => live && interval === "month" && SALE.plans.includes(plan);
+
+/** The first month's price in the sale: exactly what Dodo charges after the percentage (₹499 → ₹299.40). */
+export const salePrice = (amount: number) => Math.round(amount * (100 - SALE.percent)) / 100;
 
 type Paid = Exclude<PlanId, "free">;
 

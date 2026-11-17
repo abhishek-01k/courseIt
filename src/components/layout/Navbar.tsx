@@ -6,7 +6,7 @@ import Logo from "./Logo";
 
 export default function Navbar() {
   return (
-    <header className="fixed inset-x-0 top-[18px] z-50 flex justify-center px-4">
+    <header className="fixed inset-x-0 top-[calc(18px+var(--sale-bar,0px))] z-50 flex justify-center px-4">
       <div className="flex w-full max-w-[880px] items-center gap-3 rounded-full bg-paper/80 py-1.5 pr-1.5 pl-4 shadow-[0_0_0_1px_var(--line),0_20px_40px_-24px_rgba(22,49,92,0.35)] backdrop-blur-[14px]">
         <Logo />
 

@@ -164,9 +164,9 @@ export function yearlySaving(plan: Plan, region: Region) {
 }
 
 /**
- * Black Friday 2026: 40% off the first month of monthly Pro and Max, in every region; the second month renews at the
- * usual price. Checkout applies Dodo's discount code `code`, which must exist in Dodo (test and live) as: percentage,
- * amount 4000 (basis points), subscription_cycles 1, restricted to the six monthly Pro and Max products, with the same
+ * Black Friday 2026: 40% off the first month of monthly Pro and Max, in every region, from 17 Nov (started early)
+ * through 30 Nov; the second month renews at the usual price. Checkout applies Dodo's discount code `code`, which
+ * must exist in Dodo (test and live) as: percentage, amount 4000 (basis points), subscription_cycles 1, restricted to the six monthly Pro and Max products, with the same
  * start and end. Yearly is left out: it's already cheaper than the sale price over a year. Set SALE_PREVIEW=1 locally
  * to see the sale before it starts.
  */
@@ -175,7 +175,7 @@ export const SALE = {
   code: "BLACKFRIDAY40",
   percent: 40,
   plans: ["pro", "max"] as PlanId[],
-  startsAt: new Date("2026-11-27T00:00:00+05:30"),
+  startsAt: new Date("2026-11-17T00:00:00+05:30"), // started early, the day it shipped
   endsAt: new Date("2026-12-01T00:00:00+05:30"), // through Cyber Monday, 30 Nov
   endsLabel: "30 Nov",
 };

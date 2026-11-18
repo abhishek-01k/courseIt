@@ -20,50 +20,51 @@ Paste a link. NVIDIA Nemotron models on Nebius Token Factory read the video's ow
 
 ## Updates
 
-### November 2026: CourseIt joins NVIDIA Inception
+### 19 November 2026: 5,428 learners, 12 paying customers
 
-CourseIt is now a member of the [NVIDIA Inception program](https://www.nvidia.com/en-us/startups/), NVIDIA's program for startups building with AI and accelerated computing. See [NVIDIA Inception Program](#nvidia-inception-program) below.
+Learners nearly doubled in 8 days, and CourseIt now earns real revenue.
 
-### 10 November 2026: 2,804 learners, 412 courses
+![Since launch: 5,428 learners, 12 paying, 411 hours learned, 416 courses built](docs/stats/admin-since-launch.png)
 
-Real usage of [courseit.xyz](https://courseit.xyz). The figures come from CourseIt's admin dashboard (counted from the database) and Vercel Web Analytics. Nothing is estimated.
+| | 10 Nov | 19 Nov |
+|---|---|---|
+| **Learners** | 2,804 | **5,428** (+94%) |
+| **Paying customers** | — | **12**, in India and Canada |
+| **Hours learned** | 110h | **411h** (3.7×) |
+| **Enrollments** | 1,934 | **3,948** (2×) |
+| **Lessons skipped by placement tests** | 717 | **1,461** |
 
-| | |
-|---|---|
-| **Learners signed up** | **2,804** (1,200 joined on 10 Nov alone) |
-| **Active learners** | 1,381 on 10 Nov · 2,648 in the last 7 days |
-| **Visitors / page views** | **11,469 visitors · 63,140 page views** in 30 days (Vercel) |
-| **Courses built** | **412** (406 ready, 99%) · median build time **1 minute** |
-| **Content generated** | 8,335 lessons · 38,655 quiz questions · 3,875 placement questions |
-| **Video turned into courses** | 2,611 hours from 2,267 YouTube videos by 245 creators |
-| **Learning** | 110 hours watched · 2,113 quiz answers (70% right) · 185 placement tests, 717 lessons skipped |
-| **Enrollments** | 1,934 learner × course enrollments · 421 roadmaps made |
-| **Audience** | 88% India · 71% mobile (62% Android) |
+- **Revenue is live:** $62 gross in the last 30 days on Dodo Payments, with no refunds.
+- **Built once, reused by many:** each course serves about 9.5 learners, so new learners add almost no AI cost.
+- **Shipped:** live payments with yearly plans and a [LinkedIn page](https://www.linkedin.com/company/courseit-xyz/).
 
-The first spike (3–4 November) came from a [reel on Abhishek's Instagram](https://www.instagram.com/p/DfRuFfvB1zA/). Top referrers since then are Google sign-in, Google search and Instagram.
+![Total learners since launch](docs/stats/admin-total-learners.png)
+
+<details>
+<summary><b>More screenshots: learners, learning, builds and content</b></summary>
 
 ![Learners, new and active per day](docs/stats/admin-people.png)
 
-![Visitors and page views, last 30 days (Vercel Web Analytics)](docs/stats/vercel-visitors.png)
-
-<details>
-<summary><b>More screenshots: learning, builds, content and audience</b></summary>
-
-**Learning activity**
-
 ![Watch time, lessons, quizzes and placement tests](docs/stats/admin-learning.png)
-
-**Course builds**
 
 ![Courses built, ready, failed and build time](docs/stats/admin-builds.png)
 
-**Content**
-
 ![Videos, lessons, creators and roadmaps](docs/stats/admin-content.png)
 
-**Audience** (Vercel Web Analytics)
+</details>
+
+Numbers come from CourseIt's admin dashboard (counted from the database) and the Dodo Payments dashboard. Nothing is estimated.
+
+<details>
+<summary><b>Earlier updates</b></summary>
+
+**10 November 2026: 2,804 learners, 412 courses.** 11,469 visitors and 63,140 page views in 30 days (Vercel), 88% from India and 71% on mobile. The first spike came from a [reel on Abhishek's Instagram](https://www.instagram.com/p/DfRuFfvB1zA/).
+
+![Visitors and page views, last 30 days (Vercel Web Analytics)](docs/stats/vercel-visitors.png)
 
 ![Countries, devices and operating systems](docs/stats/vercel-audience.png)
+
+**November 2026: CourseIt joins the [NVIDIA Inception program](https://www.nvidia.com/en-us/startups/).** See [below](#nvidia-inception-program).
 
 </details>
 
@@ -75,6 +76,7 @@ The first spike (3–4 November) came from a [reel on Abhishek's Instagram](http
 | **Demo video** | https://youtu.be/dm69e4neiP0 (under 3 minutes) |
 | **Hackathon** | [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/), **Best Apps and Agents** track |
 | **Program** | Member of the [NVIDIA Inception program](https://www.nvidia.com/en-us/startups/) |
+| **Follow** | [CourseIt on LinkedIn](https://www.linkedin.com/company/courseit-xyz/) |
 | **Built with** | NVIDIA Nemotron 3 Ultra, Nemotron 3.5 Super and Nemotron 3.5 Lightning on **Nebius Token Factory**, plus Tavily |
 | **License** | [MIT](LICENSE) |
 
@@ -167,15 +169,15 @@ Joining and studying a course someone already built is **always free** and never
 | Plan | Price (India / UK / elsewhere) | Hours a month | Longest course | Extras |
 |---|---|---|---|---|
 | **Basic** | ₹199 / £4.99 / $4.99 a month | 5 | 5 hours | Retry failed builds; courses shared in Community |
-| **Pro** | ₹499 / £15 / $19 a month (₹4,999 / £149 / $189 a year) | 20 | 10 hours | Private courses, priority building, Telegram support |
-| **Max** | ₹999 / £39 / $49 a month (₹9,999 / £389 / $489 a year) | 40 | 20 hours | Highest priority, WhatsApp and priority support, early access |
+| **Pro** | ₹499 / £15 / $19 a month (₹3,999 / £95 / $119 a year) | 20 | 10 hours | Private courses, priority building, Telegram support |
+| **Max** | ₹999 / £39 / $49 a month (₹8,999 / £239 / $299 a year) | 40 | 20 hours | Highest priority, WhatsApp and priority support, early access |
 
 - Prices are shown in the visitor's region: rupees with GST in India, pounds with VAT in the UK, US dollars plus local tax elsewhere. India and UK checkouts are locked to that country and currency.
 - Each build's hours come back 30 days after it. A failed build only counts the lessons it finished.
 - Limits are checked before anything is spent; a video too long for the plan is refused with the reason.
 - Pro and Max monthly prices are early-user prices; the later price is shown crossed out.
 - Payments run on **Dodo Payments** (merchant of record), with in-app upgrades (Basic → Pro/Max, Pro → Max, prorated) and the Dodo customer portal for billing and invoices.
-- **Until payments go live**, paid plans show "Coming soon" and everyone gets a launch offer: one free course a month, up to 10 hours.
+- Payments are **live**. Black Friday (17–30 Nov 2026): 40% off the first month of monthly Pro and Max, applied at checkout.
 
 Plans, prices and limits all live in [`src/lib/plans.ts`](src/lib/plans.ts).
 

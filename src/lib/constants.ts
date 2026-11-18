@@ -77,9 +77,9 @@ export const FOOTER_COLUMNS: { title: string; links: NavLink[] }[] = [
   { title: "Legal", links: LEGAL_LINKS },
 ];
 
-// The maker's profiles (footer icons and About). Add YouTube back with a real channel URL.
+// CourseIt's and the maker's profiles (footer icons and About). Add YouTube back with a real channel URL.
 export const SOCIAL_LINKS = [
-  { label: "LinkedIn", href: "https://www.linkedin.com/in/abhishek-01k/" },
+  { label: "LinkedIn", href: "https://www.linkedin.com/company/courseit-xyz/" }, // CourseIt's company page (public URL, not ?viewAsMember)
   { label: "X", href: "https://x.com/abhish_3k" },
   { label: "Instagram", href: "https://www.instagram.com/why_singh_why/" },
   { label: "Discord", href: "https://discord.gg/kYmdyTfPd" },

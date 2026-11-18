@@ -7,6 +7,7 @@ export const SITE_URL = "https://www.courseit.xyz";
 /** Public marketing pages, in the order we care about them. Add a page here when it ships. */
 export const STATIC_PAGES: { path: string; priority: number; changeFrequency: "daily" | "weekly" | "monthly" | "yearly" }[] = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
+  { path: "/library", priority: 0.8, changeFrequency: "daily" },
   { path: "/pricing", priority: 0.8, changeFrequency: "monthly" },
   { path: "/about", priority: 0.7, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.2, changeFrequency: "yearly" },

@@ -50,8 +50,8 @@ Ordered by expected impact per effort. Each line is one PR. Tick and date when m
       canonical, "free course with notes & quizzes" titles, noindex on failed/unbuilt courses, lesson URLs out of
       robots, English courses first in the sitemap. _(PR, 17 Nov)_
 - [ ] **Scale the course sitemap** 5 → 25 → 100 → all English, once URL Inspection shows each batch indexed. Then Hindi.
-- [ ] **Public course directory** `/library` (or similar): every public English course grouped by topic, linked from the
-      footer. Gives Google a crawl path to every course; lists are paged, no thin topic pages until a topic has 10+ courses.
+- [x] **Public course library** `/library`: every public course grouped by topic, English first, linked from the
+      footer, in the sitemap and llms.txt. Gives Google a crawl path to every course. _(PR, 18 Nov)_
 - [ ] **Topic hub pages** for topics with 10+ English courses ("Learn Python from YouTube: N free structured courses"):
       unique intro, the courses ranked by learners, updated date. Batches of 5.
 - [ ] **Organization + WebSite JSON-LD** on the home page (name, logo, sameAs) for the brand entity and misspellings.
@@ -104,3 +104,15 @@ impressions after 6 weeks.
 - Why: the template is the one change that improves all ~420 pages at once. The sitemap still grows in batches,
   because quality per page must be proven (indexed) before volume.
 - Next: confirm the first 5 sitemap courses are indexed, then raise the batch; course directory page.
+
+### 2026-11-18: course library
+
+- The first scheduled run (Wed 10:44 IST) built this PR, but GitHub refused the push (403): the scheduled task had no
+  repository attached. The schedule now fires into the session that has push access, and this PR was rebuilt there.
+- Shipped `/library`: every ready, public course with lessons, grouped by its first topic tag. English courses come
+  first, then the most-joined. Each course is a plain link with its channel, lesson count, length and language when it
+  isn't English. It's linked from the footer (Product → Course library), added to the sitemap (daily) and to llms.txt.
+- Why: Community is behind sign-in, so course pages had no public crawl path except the landing page's popular
+  courses. One light, text-only page that links to all of them is the cheapest way to get them discovered. The
+  sitemap batch rule still applies: being linked isn't the same as being submitted.
+- Next: Organization + WebSite JSON-LD (brand entity and misspellings), then topic hubs once a topic has 10+ courses.

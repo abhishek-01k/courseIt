@@ -22,6 +22,7 @@ CourseIt is made by Triggerfy, a small studio run by Abhishek Kumar (New Delhi, 
 ## Key pages
 
 - [Home](${SITE_URL}/): what CourseIt is and how it works
+- [Course library](${SITE_URL}/library): every free public course, by topic
 - [Pricing](${SITE_URL}/pricing): plans and what each includes, priced by region
 - [About](${SITE_URL}/about): who builds CourseIt and why
 - [Privacy policy](${SITE_URL}/privacy)

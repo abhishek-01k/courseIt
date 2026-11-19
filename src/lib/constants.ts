@@ -15,7 +15,7 @@ export const LEGAL = {
   parent: { name: "Triggerfy", url: "https://www.linkedin.com/company/144026090/" },
   contactEmail: "hello@triggerfy.xyz",
   jurisdiction: "India",
-  lastUpdated: "November 4, 2026",
+  lastUpdated: "November 19, 2026",
 };
 
 // NVIDIA's rules (design.nvidia.com/partners/inception): write "the NVIDIA Inception program" in sentences ("Program" only in

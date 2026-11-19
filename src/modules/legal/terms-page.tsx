@@ -37,6 +37,10 @@ export default function TermsPage() {
           . CourseIt is not affiliated with, endorsed or sponsored by YouTube or Google.
         </p>
         <p>Only add videos you are allowed to watch. Lessons, quizzes and notes we generate are study aids for your personal learning.</p>
+        <p>
+          <strong>For creators:</strong> if you&apos;d prefer your videos not be used to build courses on CourseIt, email{" "}
+          <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a> with your channel link and we&apos;ll remove them within a few days.
+        </p>
       </LegalSection>
 
       <LegalSection title="4. AI-generated content">

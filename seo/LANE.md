@@ -54,7 +54,7 @@ Ordered by expected impact per effort. Each line is one PR. Tick and date when m
       footer, in the sitemap and llms.txt. Gives Google a crawl path to every course. _(PR, 18 Nov)_
 - [ ] **Topic hub pages** for topics with 10+ English courses ("Learn Python from YouTube: N free structured courses"):
       unique intro, the courses ranked by learners, updated date. Batches of 5.
-- [ ] **Organization + WebSite JSON-LD** on the home page (name, logo, sameAs) for the brand entity and misspellings.
+- [x] **Organization + WebSite JSON-LD** on the home page (name, logo, sameAs) for the brand entity and misspellings. _(PR, 20 Nov)_
 - [ ] **Answer-first guides (US English)**, batch of 5: "How to finish a YouTube course", "CS50 study plan",
       "How to study Karpathy's Zero to Hero", "Turn a YouTube playlist into a course", "Free alternatives to
       Coursera for self-learners". Needs the `/guides` page type.
@@ -116,3 +116,15 @@ impressions after 6 weeks.
   courses. One light, text-only page that links to all of them is the cheapest way to get them discovered. The
   sitemap batch rule still applies: being linked isn't the same as being submitted.
 - Next: Organization + WebSite JSON-LD (brand entity and misspellings), then topic hubs once a topic has 10+ courses.
+
+### 2026-11-20: brand entity (scheduled run)
+
+- No Search Console keys yet, so no fresh data and no way to confirm the first 5 sitemap courses are indexed: the
+  sitemap batch stays at 5. Topic hubs need per-topic course counts, which this environment can't read (no database).
+- Shipped Organization + WebSite JSON-LD on the home page: name "CourseIt", alternateName "Course It" and
+  "courseit.xyz", logo (512×512), founder, parent organization (Triggerfy), sameAs limited to CourseIt's own profiles
+  (LinkedIn company page, GitHub repo). The maker's personal X and Instagram are left out on purpose.
+- Why: brand queries are all our search traffic today and people misspell the name. Site-name and organization data
+  help Google show "CourseIt" consistently and connect our profiles. It doesn't change rankings for non-brand queries.
+- Next: answer-first guides need the `/guides` page type (next run can build the type with its first guide), then
+  topic hubs once the agent can read topic counts.

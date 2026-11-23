@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { courses, enrollments } from "@/db/schema";
 import { coursePath } from "@/lib/paths";
 import { COURSE_SITEMAP_LIMIT, SITE_URL, STATIC_PAGES } from "../config";
+import { GUIDES } from "../guides/guides";
 
 /** The current batch of course pages: ready, public, English first (the US push), then most-joined. */
 async function topCourses() {
@@ -31,5 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // A database hiccup must never take the sitemap down: serve the static pages alone.
     console.error("[seo] sitemap: course query failed", err);
   }
-  return [...pages, ...courseEntries];
+  // Guides carry their real updated date: it changes only when the guide's content does.
+  const guides: MetadataRoute.Sitemap = GUIDES.map((g) => ({ url: `${SITE_URL}/guides/${g.slug}`, lastModified: g.updated, changeFrequency: "monthly", priority: 0.7 }));
+  return [...pages, ...guides, ...courseEntries];
 }

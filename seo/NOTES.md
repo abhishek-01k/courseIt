@@ -26,7 +26,7 @@ lane's files: it adds a line here instead.
 
 ## Website lane
 
-- [ ] Add a `/guides` page type rendering answer-first guides from JSON in `seo/content/guides/` (title, description,
+- [x] Add a `/guides` page type _(SEO lane, 23 Nov: content in `seo/content/guides/`, renderer in `seo/guides/`)_. rendering answer-first guides from JSON in `seo/content/guides/` (title, description,
       answer, body, sources, updated date). Link `/guides` from the footer. SEO lane writes the content.
 - [x] Course pages: canonical, Course schema, visible summary and outline. _(SEO lane, 17 Nov)_
 - [ ] Organization + WebSite JSON-LD on the home page (name, logo, url, sameAs = the social links in `src/lib/constants.ts`).

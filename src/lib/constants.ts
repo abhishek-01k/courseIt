@@ -64,6 +64,7 @@ export const FOOTER_COLUMNS: { title: string; links: NavLink[] }[] = [
       { id: 3, title: "How it works", href: "/#how-it-works" },
       { id: 4, title: "Community", href: "/community" },
       { id: 5, title: "Course library", href: "/library" },
+      { id: 7, title: "Guides", href: "/guides" },
       { id: 6, title: "Pricing", href: "/pricing" },
     ],
   },

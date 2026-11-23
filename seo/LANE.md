@@ -55,7 +55,7 @@ Ordered by expected impact per effort. Each line is one PR. Tick and date when m
 - [ ] **Topic hub pages** for topics with 10+ English courses ("Learn Python from YouTube: N free structured courses"):
       unique intro, the courses ranked by learners, updated date. Batches of 5.
 - [x] **Organization + WebSite JSON-LD** on the home page (name, logo, sameAs) for the brand entity and misspellings. _(PR, 20 Nov)_
-- [ ] **Answer-first guides (US English)**, batch of 5: "How to finish a YouTube course", "CS50 study plan",
+- [ ] **Answer-first guides (US English)**, batch of 5 (1/5 done: `/guides` page type + "How to finish a YouTube course", 23 Nov): "How to finish a YouTube course", "CS50 study plan",
       "How to study Karpathy's Zero to Hero", "Turn a YouTube playlist into a course", "Free alternatives to
       Coursera for self-learners". Needs the `/guides` page type.
 - [ ] **US seed courses** _(needs owner yes: costs AI and caption credits)_: build ~20 public courses from the playlists
@@ -128,3 +128,14 @@ impressions after 6 weeks.
   help Google show "CourseIt" consistently and connect our profiles. It doesn't change rankings for non-brand queries.
 - Next: answer-first guides need the `/guides` page type (next run can build the type with its first guide), then
   topic hubs once the agent can read topic counts.
+
+### 2026-11-23: guides page type + first guide (scheduled run)
+
+- Still no Search Console keys, so no new data; sitemap course batch stays at 5.
+- Shipped the `/guides` page type: one JSON file per guide in `seo/content/guides/`, rendered at `/guides/<slug>` with
+  an answer-first box, a visible updated date, Article JSON-LD, canonical, and a `/guides` index. Linked from the
+  footer, in the sitemap (with each guide's real updated date) and llms.txt.
+- First guide: "How to finish a YouTube course: a 6-step plan" (US English). Answer in 32 words, no statistics,
+  links to /library and the home page. Targets the "learner problem" cluster.
+- Next: guides 2–5 ("CS50 study plan", "How to study Karpathy's Zero to Hero", "Turn a YouTube playlist into a
+  course", "Free alternatives to Coursera for self-learners"), one per run, each checked against primary sources.

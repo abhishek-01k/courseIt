@@ -55,7 +55,7 @@ Ordered by expected impact per effort. Each line is one PR. Tick and date when m
 - [ ] **Topic hub pages** for topics with 10+ English courses ("Learn Python from YouTube: N free structured courses"):
       unique intro, the courses ranked by learners, updated date. Batches of 5.
 - [x] **Organization + WebSite JSON-LD** on the home page (name, logo, sameAs) for the brand entity and misspellings. _(PR, 20 Nov)_
-- [ ] **Answer-first guides (US English)**, batch of 5 (1/5 done: `/guides` page type + "How to finish a YouTube course", 23 Nov): "How to finish a YouTube course", "CS50 study plan",
+- [ ] **Answer-first guides (US English)**, batch of 5 (2/5 done: "How to finish a YouTube course", 23 Nov; "How to turn a YouTube playlist into a course", 25 Nov): "How to finish a YouTube course", "CS50 study plan",
       "How to study Karpathy's Zero to Hero", "Turn a YouTube playlist into a course", "Free alternatives to
       Coursera for self-learners". Needs the `/guides` page type.
 - [ ] **US seed courses** _(needs owner yes: costs AI and caption credits)_: build ~20 public courses from the playlists
@@ -139,3 +139,15 @@ impressions after 6 weeks.
   links to /library and the home page. Targets the "learner problem" cluster.
 - Next: guides 2–5 ("CS50 study plan", "How to study Karpathy's Zero to Hero", "Turn a YouTube playlist into a
   course", "Free alternatives to Coursera for self-learners"), one per run, each checked against primary sources.
+
+### 2026-11-25: guide 2 of 5, playlist to course (scheduled run)
+
+- Planned guide was "CS50 study plan", but cs50.harvard.edu is blocked by this environment's network, so its facts
+  (week list, certificate rules) couldn't be checked against Harvard's pages. Writing it from memory would break the
+  no-invented-facts rule, so it waits until that host is allowed or someone checks the facts by hand.
+- Shipped instead: "How to turn a YouTube playlist into a course" (tool cluster). Answer in 38 words; the manual method
+  first, then CourseIt; product facts only from the repo README and COURSE_LIMITS (200 videos, 20 hours, captions
+  needed); no prices (links /pricing). Links: /, /library, /pricing, and guide 1.
+- Next: "Free alternatives to Coursera for self-learners" needs checked facts about other platforms, so same issue;
+  "How to study Karpathy's Zero to Hero" needs the playlist's video list. Both need network access to primary
+  sources. Topic hubs and sitemap scaling still need Search Console keys.
